@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>👑 大肥鱼二次元 Vtuber 虚拟主播直播间 (东北大碴子幽默+全自动互动版)</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: radial-gradient(ellipse at 50% 25%, #0b1f3a 0%, #061326 50%, #020710 100%);
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      user-select: none;
+      position: relative;
+    }
+
+    /* 1. 梦幻二次元水族馆直播间光影 */
+    .anime-ambient {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% -10%, rgba(56, 189, 248, 0.35) 0%, transparent 65%);
+      pointer-events: none;
+      z-index: 1;
+      animation: ambientFlow 7s ease-in-out infinite alternate;
+    }
+    @keyframes ambientFlow {
+      0% { opacity: 0.6; transform: scale(1) translateY(0); }
+      100% { opacity: 0.95; transform: scale(1.08) translateY(-10px); }
+    }
+
+    .plankton {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: rgba(125, 211, 252, 0.85);
+      border-radius: 50%;
+      box-shadow: 0 0 10px #38bdf8, 0 0 20px #38bdf8;
+      pointer-events: none;
+      z-index: 2;
+      animation: planktonFloat 12s linear infinite;
+    }
+    @keyframes planktonFloat {
+      0% { transform: translate(0, 105vh) scale(0.5); opacity: 0; }
+      20% { opacity: 0.9; }
+      80% { opacity: 0.9; }
+      100% { transform: translate(30px, -10vh) scale(1.2); opacity: 0; }
+    }
+
+    .bubble {
+      position: absolute;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.9), rgba(56, 189, 248, 0.25));
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      pointer-events: none;
+      z-index: 2;
+      animation: bubbleRise 9s linear infinite;
+    }
+    @keyframes bubbleRise {
+      0% { transform: translateY(105vh) scale(0.5); opacity: 0; }
+      15% { opacity: 0.8; }
+      85% { opacity: 0.8; }
+      100% { transform: translateY(-10vh) scale(1.2); opacity: 0; }
+    }
+
+    /* 2. 主舞台视窗：大肥鱼二次元人物 (Vtuber) */
+    .stage-viewport {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .anime-avatar-frame {
+      position: relative;
+      height: 100vh;
+      aspect-ratio: 896 / 1200;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transform-origin: center 85%;
+      animation: vtuberBreathing 5s ease-in-out infinite;
+      cursor: pointer;
+    }
+    @keyframes vtuberBreathing {
+      0%, 100% { transform: scale(1) translateY(0px) rotate(0deg); }
+      35% { transform: scale(1.008) translateY(-6px) rotate(-0.5deg); }
+      70% { transform: scale(0.996) translateY(3px) rotate(0.4deg); }
+    }
+
+    .talking-head-nod {
+      animation: animeTalkNod 0.35s ease-in-out infinite alternate !important;
+    }
+    @keyframes animeTalkNod {
+      from { transform: translateY(0px) rotate(0deg); }
+      to { transform: translateY(-4px) rotate(0.6deg); }
+    }
+
+    .anime-poked-reaction {
+      animation: animePoked 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    }
+    @keyframes animePoked {
+      0% { transform: scale(1); }
+      30% { transform: scale(1.08, 0.92) translateY(10px); }
+      60% { transform: scale(0.95, 1.05) translateY(-15px); }
+      100% { transform: scale(1) translateY(0); }
+    }
+
+    #animeImage {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: contrast(1.04) brightness(1.02);
+      pointer-events: none;
+    }
+
+    /* 3. 二次元萌系小嘴实时动态开合图层 */
+    #mouthOverlay {
+      position: absolute;
+      left: 50.2%;
+      top: 41.5%;
+      transform: translate(-50%, -50%);
+      width: 65px;
+      height: 38px;
+      z-index: 20;
+      pointer-events: none;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .anime-mouth-svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    }
+
+    .cinematic-vignette {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at 50% 45%, transparent 50%, rgba(0, 0, 0, 0.4) 85%, rgba(0,0,0,0.85) 100%);
+      z-index: 15;
+    }
+
+    /* 4. 头顶二次元赛博萌趣对话气泡 */
+    .fish-dialog-box {
+      position: absolute;
+      top: 90px;
+      left: 50%;
+      transform: translateX(-50%) translateY(12px) scale(0.9);
+      min-width: 320px;
+      max-width: 560px;
+      background: rgba(8, 20, 36, 0.94);
+      border: 2px solid rgba(56, 189, 248, 0.7);
+      border-radius: 22px;
+      padding: 16px 26px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(56, 189, 248, 0.35);
+      backdrop-filter: blur(18px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      pointer-events: none;
+      z-index: 35;
+      text-align: center;
+    }
+    .fish-dialog-box.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0px) scale(1);
+    }
+    .fish-dialog-header {
+      font-size: 14px;
+      font-weight: 800;
+      color: #38bdf8;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .fish-dialog-text {
+      font-size: 18px;
+      line-height: 1.6;
+      color: #f0f9ff;
+      font-weight: 600;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    }
+    .fish-dialog-arrow {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 12px 12px 0 12px;
+      border-style: solid;
+      border-color: rgba(56, 189, 248, 0.7) transparent transparent transparent;
+    }
+
+    /* 5. 旋转黑胶唱片挂件 */
+    .vinyl-player-widget {
+      position: absolute;
+      top: 80px;
+      right: 30px;
+      background: rgba(8, 20, 36, 0.88);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 50px;
+      padding: 8px 20px 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      backdrop-filter: blur(14px);
+      z-index: 80;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .vinyl-player-widget:hover {
+      border-color: #38bdf8;
+      box-shadow: 0 10px 35px rgba(56, 189, 248, 0.3);
+    }
+    .vinyl-disc {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #222 25%, #000 70%);
+      border: 2px solid #38bdf8;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      animation: discRotate 4s linear infinite;
+      animation-play-state: paused;
+    }
+    .vinyl-disc.playing {
+      animation-play-state: running;
+    }
+    @keyframes discRotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .vinyl-disc-core {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #38bdf8;
+    }
+    .vinyl-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .vinyl-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      max-width: 180px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .vinyl-artist {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .audio-equalizer {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 16px;
+    }
+    .eq-bar {
+      width: 3px;
+      background: #38bdf8;
+      border-radius: 2px;
+      height: 4px;
+      transition: height 0.15s ease;
+    }
+    .vinyl-disc.playing ~ .vinyl-info .eq-bar:nth-child(1) { animation: eqJump 0.6s infinite alternate; }
+    .vinyl-disc.playing ~ .vinyl-info .eq-bar:nth-child(2) { animation: eqJump 0.4s infinite 0.2s alternate; }
+    .vinyl-disc.playing ~ .vinyl-info .eq-bar:nth-child(3) { animation: eqJump 0.8s infinite 0.1s alternate; }
+    @keyframes eqJump {
+      from { height: 3px; }
+      to { height: 16px; }
+    }
+
+    /* 6. 全屏小鱼干暴击金币雨特效 */
+    .snack-rain-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 50;
+      overflow: hidden;
+    }
+    .snack-item {
+      position: absolute;
+      font-size: 32px;
+      animation: snackFallDown 2.2s ease-in forwards;
+      filter: drop-shadow(0 4px 10px rgba(245, 158, 11, 0.6));
+    }
+    @keyframes snackFallDown {
+      0% { transform: translateY(-50px) rotate(0deg) scale(0.6); opacity: 1; }
+      100% { transform: translateY(105vh) rotate(360deg) scale(1.3); opacity: 0; }
+    }
+
+    /* 7. 巨额打赏横幅跑马灯广播 */
+    .gift-banner {
+      position: absolute;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-30px) scale(0.8);
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95));
+      border: 2px solid #fde68a;
+      border-radius: 30px;
+      padding: 10px 28px;
+      color: #fff;
+      font-weight: 800;
+      font-size: 16px;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.6), 0 0 20px #f59e0b;
+      backdrop-filter: blur(10px);
+      z-index: 60;
+      opacity: 0;
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .gift-banner.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0px) scale(1);
+    }
+
+    /* 8. 弹幕流水墙 (支持进房、点赞、关注高亮标签) */
+    .danmu-waterfall {
+      position: absolute;
+      left: 30px;
+      bottom: 110px;
+      width: 360px;
+      max-height: 330px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+      z-index: 25;
+    }
+    .danmu-bubble {
+      background: rgba(10, 22, 38, 0.88);
+      border-left: 4px solid #38bdf8;
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 14px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+      animation: slideInDanmu 0.35s ease;
+    }
+    @keyframes slideInDanmu {
+      from { opacity: 0; transform: translateX(-40px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    .danmu-user-badge {
+      font-size: 12px;
+      font-weight: bold;
+      color: #7dd3fc;
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .badge-join { border-left-color: #10b981 !important; }
+    .badge-follow { border-left-color: #ec4899 !important; }
+    .badge-fansclub { border-left-color: #f59e0b !important; }
+    .badge-gift { border-left-color: #f43f5e !important; }
+
+    /* 9. 顶部工具栏 (增加全自动实战触发按钮) */
+    .top-toolbar {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+      transition: opacity 0.3s ease;
+    }
+    .top-toolbar.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .btn-pill-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: rgba(6, 15, 28, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 14px;
+      padding: 6px 12px;
+      backdrop-filter: blur(14px);
+    }
+    .btn-action {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #e0f2fe;
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-action:hover {
+      background: rgba(56, 189, 248, 0.3);
+      border-color: #38bdf8;
+      transform: translateY(-1px);
+    }
+    .btn-snack {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      border: none;
+      color: #fff;
+    }
+    .btn-broadcast {
+      background: linear-gradient(135deg, #0ea5e9, #0284c7);
+      border: none;
+      color: #fff;
+    }
+
+    /* 底部弹幕输入控制条 */
+    .bottom-bar {
+      position: absolute;
+      bottom: 16px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      background: rgba(6, 15, 28, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 14px;
+      padding: 10px 18px;
+      backdrop-filter: blur(14px);
+      z-index: 100;
+      transition: opacity 0.3s ease;
+    }
+    .bottom-bar.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .bottom-bar input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 10px 16px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+    }
+    .bottom-bar input:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+    }
+
+    /* 点歌台弹窗 */
+    #musicModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(10px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .music-panel {
+      background: #0b1728;
+      border: 1.5px solid #1e3a5f;
+      border-radius: 18px;
+      width: 520px;
+      max-width: 90vw;
+      padding: 24px;
+      box-shadow: 0 20px 45px rgba(0,0,0,0.8);
+      color: #fff;
+    }
+    .song-list-container {
+      max-height: 260px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .song-item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #040b14;
+      border: 1px solid #1e3a5f;
+      border-radius: 8px;
+      padding: 10px 14px;
+      transition: all 0.2s;
+    }
+    .song-item-row:hover {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    #mouthAdjustPanel {
+      display: none;
+      position: absolute;
+      top: 70px;
+      left: 20px;
+      background: rgba(10,18,30,0.95);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 10px;
+      padding: 14px 18px;
+      z-index: 120;
+      font-size: 13px;
+      color: #fff;
+      width: 280px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. 深海氛围与水母荧光微尘 -->
+  <div class="anime-ambient"></div>
+
+  <!-- 2. 全屏小鱼干暴击金币雨 -->
+  <div class="snack-rain-layer" id="snackRain"></div>
+
+  <!-- 3. 豪华礼物专属横幅跑马灯 -->
+  <div class="gift-banner" id="giftBanner">
+    <span>🏆</span>
+    <span id="giftBannerText">感谢 【榜一大哥】 投喂 100 只小鱼干！大肥鱼娘开心度 +100%！</span>
+  </div>
+
+  <!-- 4. 旋转黑胶唱片挂件 -->
+  <div class="vinyl-player-widget" id="vinylWidget" title="点击切歌或暂停">
+    <div class="vinyl-disc" id="vinylDisc">
+      <div class="vinyl-disc-core"></div>
+    </div>
+    <div class="vinyl-info">
+      <div class="vinyl-title" id="currentSongTitle">🎵 治愈深海纯音乐</div>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span class="vinyl-artist" id="currentSongArtist">大肥鱼精选</span>
+        <div class="audio-equalizer">
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. C 位核心舞台：大肥鱼二次元人物 (Vtuber) -->
+  <div class="stage-viewport">
+    <div class="anime-avatar-frame" id="avatarFrame" title="点击戳戳大肥鱼娘，会有傲娇萌趣反馈哦！">
+      <img id="animeImage" src="/dafeiyu_anime.png" alt="大肥鱼二次元Vtuber" />
+
+      <!-- 二次元可爱小嘴实时动态开合图层 -->
+      <div id="mouthOverlay">
+        <svg class="anime-mouth-svg" viewBox="0 0 100 65">
+          <defs>
+            <linearGradient id="animeLip" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#ff7b92" />
+              <stop offset="60%" stop-color="#e84a6b" />
+              <stop offset="100%" stop-color="#ba2b48" />
+            </linearGradient>
+            <radialGradient id="innerMouth" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#5a0e1c" />
+              <stop offset="100%" stop-color="#1f0308" />
+            </radialGradient>
+          </defs>
+
+          <!-- 口腔内影 -->
+          <ellipse id="mouthCavity" cx="50" cy="33" rx="22" ry="2" fill="url(#innerMouth)" opacity="0" />
+
+          <!-- 二次元萌系小虎牙 -->
+          <path id="mouthTeeth" d="M 38 30 Q 50 33 62 30 L 64 34 L 60 32 L 50 34 L 40 32 L 36 34 Z" fill="#ffffff" opacity="0" />
+
+          <!-- 上唇 -->
+          <path id="upperLip" d="M 22 30 Q 36 24 50 28 Q 64 24 78 30 Q 64 27 50 29 Q 36 27 22 30 Z" fill="url(#animeLip)" />
+
+          <!-- 下唇 -->
+          <path id="lowerLip" d="M 22 30 Q 50 33 78 30 Q 50 38 22 30 Z" fill="url(#animeLip)" />
+        </svg>
+      </div>
+    </div>
+
+    <div class="cinematic-vignette"></div>
+  </div>
+
+  <!-- 6. 头顶二次元赛博萌趣对话气泡 -->
+  <div class="fish-dialog-box" id="fishDialog">
+    <div class="fish-dialog-header">
+      <span>👑</span>
+      <span>大肥鱼 (东北傲娇大妞 Vtuber)</span>
+    </div>
+    <div class="fish-dialog-text" id="fishText">哎呦喂！老铁们进屋往里坐，有啥想唠的发弹幕，想听歌打“点歌 晴天”，本鱼随时安排！</div>
+    <div class="fish-dialog-arrow"></div>
+  </div>
+
+  <!-- 7. 弹幕流水瀑布 (全自动化事件流) -->
+  <div class="danmu-waterfall" id="danmuStream"></div>
+
+  <!-- 8. 顶部实战操作栏 (自动欢迎、点赞感谢、粉丝团、播报规则) -->
+  <div class="top-toolbar" id="topToolbar">
+    <div class="btn-pill-group">
+      <span style="font-size: 13px; color: #38bdf8; font-weight: 800;">👑 大肥鱼全自动运营台</span>
+      <button class="btn-action btn-broadcast" id="broadcastRuleBtn">📢 播报直播间规则</button>
+      <button class="btn-action" id="testJoinBtn">👤 模拟大哥进房</button>
+      <button class="btn-action" id="testFollowBtn">❤️ 模拟点关注</button>
+      <button class="btn-action" id="testFansBtn">🎖️ 模拟加粉丝团</button>
+      <button class="btn-action btn-snack" id="snackBtn">🐟 送小鱼干</button>
+    </div>
+
+    <div class="btn-pill-group">
+      <button class="btn-action" id="openMusicBtn">🎵 点歌台</button>
+      <button class="btn-action" id="openConfigBtn">⚙️ 配置与人设</button>
+      <button class="btn-action" id="hideUiBtn" title="按 H 键恢复显示">👁️ 纯净推流</button>
+    </div>
+  </div>
+
+  <!-- 9. 底部弹幕输入控制条 -->
+  <div class="bottom-bar" id="bottomBar">
+    <input type="text" id="msgInput" placeholder="发弹幕调侃（如：大肥鱼你真胖、点歌 晴天、我想听 稻香）或回车发送..." />
+    <button class="btn-action" id="sendBtn" style="background: linear-gradient(135deg, #0284c7, #0369a1);">发送弹幕</button>
+  </div>
+
+  <!-- 10. 口型微调面板 -->
+  <div id="mouthAdjustPanel">
+    <div style="font-weight: 600; color: #38bdf8; margin-bottom: 10px; display: flex; justify-content: space-between;">
+      <span>🎯 唇形位置与尺寸微调</span>
+      <span id="closeMouthAdjust" style="cursor: pointer; color: #888;">&times;</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <label>水平 X: <span id="valX">50.2</span>%
+        <input type="range" id="mouthX" min="40" max="60" step="0.1" value="50.2" style="width: 100%;">
+      </label>
+      <label>垂直 Y: <span id="valY">41.5</span>%
+        <input type="range" id="mouthY" min="35" max="50" step="0.1" value="41.5" style="width: 100%;">
+      </label>
+      <label>唇形缩放: <span id="valScale">1.0</span>x
+        <input type="range" id="mouthScale" min="0.6" max="1.8" step="0.05" value="1.0" style="width: 100%;">
+      </label>
+    </div>
+  </div>
+
+  <!-- 11. 点歌台面板弹窗 -->
+  <div id="musicModal">
+    <div class="music-panel">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="font-size: 18px; color: #38bdf8;">🎵 大肥鱼点歌台</h3>
+        <span id="closeMusicBtn" style="cursor: pointer; font-size: 22px; color: #94a3b8;">&times;</span>
+      </div>
+      <div style="font-size: 13px; color: #94a3b8; line-height: 1.5;">
+        观众在弹幕发送 <b>“点歌 歌名”</b> 或 <b>“我想听 歌名”</b> 即可自动点歌！<br>
+        也可将你的 MP3 文件直接放入 <code>dafeiyu_live/music/</code> 目录，支持秒速点播。
+      </div>
+
+      <div class="song-list-container" id="songListContainer"></div>
+    </div>
+  </div>
+
+  <!-- 12. 配置弹窗 -->
+  <div id="configModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: #0b1728; border: 1.5px solid #1e3a5f; border-radius: 16px; width: 480px; max-width: 90vw; padding: 24px; box-shadow: 0 20px 45px rgba(0,0,0,0.8); color: #fff;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="font-size: 18px; color: #38bdf8;">⚙️ 大肥鱼大脑与人设设置</h3>
+        <span id="closeModalBtn" style="cursor: pointer; font-size: 22px; color: #94a3b8;">&times;</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 14px; font-size: 13px;">
+        <div>
+          <label style="display: block; margin-bottom: 5px; color: #94a3b8;">代理 Base URL:</label>
+          <input type="text" id="cfgBaseUrl" style="width: 100%; padding: 8px 12px; background: #030a14; border: 1px solid #1e3a5f; border-radius: 6px; color: #fff;" />
+        </div>
+
+        <div>
+          <label style="display: block; margin-bottom: 5px; color: #94a3b8;">代理 API Key:</label>
+          <input type="password" id="cfgApiKey" style="width: 100%; padding: 8px 12px; background: #030a14; border: 1px solid #1e3a5f; border-radius: 6px; color: #fff;" />
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+          <div style="flex: 1;">
+            <label style="display: block; margin-bottom: 5px; color: #94a3b8;">模型名称:</label>
+            <input type="text" id="cfgModel" value="deepseek-chat" style="width: 100%; padding: 8px 12px; background: #030a14; border: 1px solid #1e3a5f; border-radius: 6px; color: #fff;" />
+          </div>
+          <div style="flex: 1;">
+            <label style="display: block; margin-bottom: 5px; color: #94a3b8;">大肥鱼音色:</label>
+            <select id="cfgVoice" style="width: 100%; padding: 8px 12px; background: #030a14; border: 1px solid #1e3a5f; border-radius: 6px; color: #fff;">
+              <option value="zh-CN-liaoning-XiaobeiNeural">东北幽默大肥鱼 (Xiaobei)</option>
+              <option value="zh-CN-XiaoyiNeural">软萌傲娇萝莉音 (Xiaoyi)</option>
+              <option value="zh-CN-XiaoxiaoNeural">元气少女音 (Xiaoxiao)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label style="display: block; margin-bottom: 5px; color: #94a3b8;">大肥鱼人设 (Prompt):</label>
+          <textarea id="cfgPrompt" rows="4" style="width: 100%; padding: 8px 12px; background: #030a14; border: 1px solid #1e3a5f; border-radius: 6px; color: #fff; font-size: 12px; resize: vertical;"></textarea>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+          <button id="cancelModalBtn" style="padding: 8px 16px; background: transparent; border: 1px solid #475569; color: #94a3b8; border-radius: 6px; cursor: pointer;">取消</button>
+          <button id="saveConfigBtn" style="padding: 8px 20px; background: linear-gradient(135deg, #0284c7, #0369a1); border: none; color: #fff; border-radius: 6px; cursor: pointer; font-weight: 600;">保存并生效</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <audio id="audioPlayer"></audio>
+  <audio id="bgmPlayer" loop></audio>
+
+  <script>
+    // ---------------- 1. 梦幻深海气泡与荧光粒子 ----------------
+    function initOceanEffects() {
+      for (let i = 0; i < 22; i++) {
+        const b = document.createElement('div');
+        b.className = 'bubble';
+        const size = Math.random() * 24 + 8;
+        b.style.width = size + 'px';
+        b.style.height = size + 'px';
+        b.style.left = Math.random() * 100 + 'vw';
+        b.style.animationDelay = (Math.random() * 8) + 's';
+        b.style.animationDuration = (Math.random() * 6 + 6) + 's';
+        document.body.appendChild(b);
+      }
+      for (let j = 0; j < 18; j++) {
+        const p = document.createElement('div');
+        p.className = 'plankton';
+        p.style.left = Math.random() * 100 + 'vw';
+        p.style.animationDelay = (Math.random() * 10) + 's';
+        p.style.animationDuration = (Math.random() * 8 + 8) + 's';
+        document.body.appendChild(p);
+      }
+    }
+    initOceanEffects();
+
+    // ---------------- 2. 满屏小鱼干暴击雨与礼物横幅 ----------------
+    const snackRain = document.getElementById('snackRain');
+    const snackBtn = document.getElementById('snackBtn');
+    const giftBanner = document.getElementById('giftBanner');
+    const giftBannerText = document.getElementById('giftBannerText');
+    const avatarFrame = document.getElementById('avatarFrame');
+
+    function triggerSnackRain(username = '榜一大哥', count = 100) {
+      avatarFrame.classList.add('anime-poked-reaction');
+      setTimeout(() => avatarFrame.classList.remove('anime-poked-reaction'), 1000);
+
+      giftBannerText.innerText = `感谢 【${username}】 投喂的 ${count} 个小鱼干！大肥鱼娘开心度 +100%！`;
+      giftBanner.classList.add('show');
+      setTimeout(() => giftBanner.classList.remove('show'), 3800);
+
+      for (let i = 0; i < 30; i++) {
+        const item = document.createElement('div');
+        item.className = 'snack-item';
+        item.innerText = ['🐟', '🐠', '✨', '🍣', '🌟'][Math.floor(Math.random() * 5)];
+        item.style.left = (Math.random() * 92 + 4) + 'vw';
+        item.style.top = '-50px';
+        item.style.animationDelay = (Math.random() * 0.7) + 's';
+        item.style.animationDuration = (Math.random() * 1.2 + 1.5) + 's';
+        snackRain.appendChild(item);
+        setTimeout(() => item.remove(), 2600);
+      }
+    }
+
+    snackBtn.onclick = () => {
+      triggerSnackRain('榜一大哥', 100);
+      sendCustomEvent('gift', '榜一大哥', '送出了 100 个金牌小鱼干 🐟');
+    };
+
+    // ---------------- 3. 互动触摸：戳戳大肥鱼娘 ----------------
+    avatarFrame.onclick = (e) => {
+      if (e.target.closest('#mouthOverlay')) return;
+      avatarFrame.classList.add('anime-poked-reaction');
+      setTimeout(() => avatarFrame.classList.remove('anime-poked-reaction'), 600);
+
+      const pokedReplies = [
+        "呀！干啥玩意儿戳我呀，本肥鱼可是有脾气的！",
+        "再戳！再戳本鱼娘就用怀里的大肥鱼砸你啦！",
+        "摸一下收五条小鱼干，概不赊账，赶紧掏出来！",
+        "哎呦喂，没看到本 Vtuber 正在优雅直播吗，讨厌啦~"
+      ];
+      const randomText = pokedReplies[Math.floor(Math.random() * pokedReplies.length)];
+      fishText.innerText = randomText;
+      fishDialog.classList.add('show');
+      startSpeaking();
+      setTimeout(() => {
+        stopSpeaking();
+        setTimeout(() => fishDialog.classList.remove('show'), 2000);
+      }, 2500);
+    };
+
+    // ---------------- 4. 二次元萌系小嘴开合控制 ----------------
+    const mouthCavity = document.getElementById('mouthCavity');
+    const mouthTeeth = document.getElementById('mouthTeeth');
+    const lowerLip = document.getElementById('lowerLip');
+    const upperLip = document.getElementById('upperLip');
+
+    let isSpeaking = false;
+    let targetOpen = 0;
+    let currentOpen = 0;
+
+    function renderMouth(open) {
+      const openPx = open * 14;
+      const cavityRy = Math.max(0.5, open * 9.5);
+      const cavityOpacity = Math.min(0.95, open * 1.6);
+      const teethOpacity = open > 0.12 ? Math.min(1.0, (open - 0.12) * 2.8) : 0;
+
+      mouthCavity.setAttribute('ry', cavityRy.toFixed(1));
+      mouthCavity.setAttribute('opacity', cavityOpacity.toFixed(2));
+      mouthTeeth.setAttribute('opacity', teethOpacity.toFixed(2));
+
+      const topPeak = 28 - open * 2.0;
+      upperLip.setAttribute('d', `M 22 30 Q 36 ${24 - open * 1.0} 50 ${topPeak.toFixed(1)} Q 64 ${24 - open * 1.0} 78 30 Q 64 27 50 29 Q 36 27 22 30 Z`);
+
+      const lowPeak = (33 + openPx).toFixed(1);
+      const lowBottom = (38 + openPx * 1.25).toFixed(1);
+      lowerLip.setAttribute('d', `M 22 30 Q 50 ${lowPeak} 78 30 Q 50 ${lowBottom} 22 30 Z`);
+    }
+
+    function speechAnimationLoop() {
+      if (!isSpeaking) {
+        currentOpen += (0 - currentOpen) * 0.25;
+        renderMouth(currentOpen);
+        if (currentOpen > 0.01) {
+          requestAnimationFrame(speechAnimationLoop);
+        } else {
+          renderMouth(0);
+          avatarFrame.classList.remove('talking-head-nod');
+        }
+        return;
+      }
+
+      const now = performance.now();
+      const wave1 = Math.sin(now * 0.016);
+      const wave2 = Math.sin(now * 0.035 + 1.2);
+      let simulatedRate = 0.5 + wave1 * 0.3 + wave2 * 0.2;
+      simulatedRate = Math.max(0.1, Math.min(1.0, simulatedRate));
+
+      targetOpen = simulatedRate;
+      currentOpen += (targetOpen - currentOpen) * 0.4;
+      renderMouth(currentOpen);
+
+      requestAnimationFrame(speechAnimationLoop);
+    }
+
+    function startSpeaking() {
+      isSpeaking = true;
+      avatarFrame.classList.add('talking-head-nod');
+      speechAnimationLoop();
+    }
+
+    function stopSpeaking() {
+      isSpeaking = false;
+    }
+
+    // ---------------- 5. 音乐播放与音频闪避 ----------------
+    const bgmPlayer = document.getElementById('bgmPlayer');
+    const audioPlayer = document.getElementById('audioPlayer');
+    const vinylDisc = document.getElementById('vinylDisc');
+    const currentSongTitle = document.getElementById('currentSongTitle');
+    const currentSongArtist = document.getElementById('currentSongArtist');
+    const vinylWidget = document.getElementById('vinylWidget');
+
+    bgmPlayer.volume = 0.6;
+
+    function setAudioDucking(isDucking) {
+      bgmPlayer.volume = isDucking ? 0.18 : 0.6;
+    }
+
+    function playMusic(song, requester = '') {
+      currentSongTitle.innerText = `🎵 《${song.name}》`;
+      currentSongArtist.innerText = requester ? `${song.artist} (${requester} 点播)` : song.artist;
+      bgmPlayer.src = song.url;
+      bgmPlayer.play().then(() => {
+        vinylDisc.classList.add('playing');
+      }).catch(err => {
+        console.warn('点击任意位置播放音乐', err);
+      });
+    }
+
+    vinylWidget.onclick = () => {
+      if (bgmPlayer.paused) {
+        bgmPlayer.play();
+        vinylDisc.classList.add('playing');
+      } else {
+        bgmPlayer.pause();
+        vinylDisc.classList.remove('playing');
+      }
+    };
+
+    // ---------------- 6. 实战交互事件与点歌 ----------------
+    const broadcastRuleBtn = document.getElementById('broadcastRuleBtn');
+    const testJoinBtn = document.getElementById('testJoinBtn');
+    const testFollowBtn = document.getElementById('testFollowBtn');
+    const testFansBtn = document.getElementById('testFansBtn');
+
+    function sendCustomEvent(eventType, username, content = '') {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: eventType,
+          username: username,
+          content: content
+        }));
+      }
+    }
+
+    broadcastRuleBtn.onclick = () => {
+      fetch('/api/trigger_rule', { method: 'POST' });
+    };
+
+    testJoinBtn.onclick = () => {
+      sendCustomEvent('join', '东北老舅哥');
+    };
+
+    testFollowBtn.onclick = () => {
+      sendCustomEvent('follow', '追风少年阿强');
+    };
+
+    testFansBtn.onclick = () => {
+      sendCustomEvent('fansclub', '深海大总管');
+    };
+
+    // ---------------- 7. 点歌台面板逻辑 ----------------
+    const openMusicBtn = document.getElementById('openMusicBtn');
+    const musicModal = document.getElementById('musicModal');
+    const closeMusicBtn = document.getElementById('closeMusicBtn');
+    const songListContainer = document.getElementById('songListContainer');
+
+    function loadSongList() {
+      fetch('/api/songs')
+        .then(res => res.json())
+        .then(data => {
+          songListContainer.innerHTML = '';
+          const allSongs = (data.local || []).concat(data.builtin || []);
+          allSongs.forEach(song => {
+            const row = document.createElement('div');
+            row.className = 'song-item-row';
+            row.innerHTML = `
+              <div>
+                <span style="font-weight: 700; color: #38bdf8;">《${song.name}》</span>
+                <span style="font-size: 12px; color: #94a3b8; margin-left: 8px;">${song.artist}</span>
+              </div>
+              <button class="btn-action" style="padding: 4px 12px; font-size: 12px;">点播</button>
+            `;
+            row.querySelector('button').onclick = () => {
+              playMusic(song, '主播');
+              musicModal.style.display = 'none';
+              sendCustomEvent('chat', '主播', `点歌 ${song.name}`);
+            };
+            songListContainer.appendChild(row);
+          });
+        })
+        .catch(err => console.error(err));
+    }
+
+    openMusicBtn.onclick = () => {
+      loadSongList();
+      musicModal.style.display = 'flex';
+    };
+    closeMusicBtn.onclick = () => {
+      musicModal.style.display = 'none';
+    };
+
+    // ---------------- 8. 纯净推流模式 (按 H 键恢复) ----------------
+    const topToolbar = document.getElementById('topToolbar');
+    const bottomBar = document.getElementById('bottomBar');
+    const hideUiBtn = document.getElementById('hideUiBtn');
+
+    function toggleUi(hidden) {
+      if (hidden) {
+        topToolbar.classList.add('hidden');
+        bottomBar.classList.add('hidden');
+        musicModal.style.display = 'none';
+      } else {
+        topToolbar.classList.remove('hidden');
+        bottomBar.classList.remove('hidden');
+      }
+    }
+
+    hideUiBtn.onclick = () => {
+      toggleUi(true);
+      alert('已进入推流纯净模式！\n随时按键盘 【H】 键可重新唤出工具栏。');
+    };
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'h' || e.key === 'H') {
+        const isHidden = topToolbar.classList.contains('hidden');
+        toggleUi(!isHidden);
+      }
+    });
+
+    // ---------------- 9. WebSocket 弹幕与高亮流水墙 ----------------
+    const fishDialog = document.getElementById('fishDialog');
+    const fishText = document.getElementById('fishText');
+    const danmuStream = document.getElementById('danmuStream');
+    const msgInput = document.getElementById('msgInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    const speechQueue = [];
+    let isPlaying = false;
+    let ws;
+
+    function connectWs() {
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+      ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'event_log') {
+            addEventLog(data.event_type, data.username, data.content);
+          } else if (data.type === 'music_play') {
+            playMusic(data.song, data.username);
+          } else if (data.type === 'reply') {
+            speechQueue.push(data);
+            processQueue();
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+
+      ws.onclose = () => {
+        setTimeout(connectWs, 3000);
+      };
+    }
+    connectWs();
+
+    function addEventLog(type, user, content) {
+      const item = document.createElement('div');
+      item.className = 'danmu-bubble';
+
+      if (type === 'join') {
+        item.classList.add('badge-join');
+        item.innerHTML = `<div class="danmu-user-badge">🟢 尊贵入场</div><div>欢迎 <b>${user}</b> 大哥进入直播间！</div>`;
+      } else if (type === 'follow') {
+        item.classList.add('badge-follow');
+        item.innerHTML = `<div class="danmu-user-badge">💖 粉丝关注</div><div>感谢 <b>${user}</b> 点亮了关注！</div>`;
+      } else if (type === 'fansclub') {
+        item.classList.add('badge-fansclub');
+        item.innerHTML = `<div class="danmu-user-badge">🎖️ 荣登粉丝团</div><div>恭喜 <b>${user}</b> 荣耀加入肥鱼团！</div>`;
+      } else if (type === 'gift') {
+        item.classList.add('badge-gift');
+        item.innerHTML = `<div class="danmu-user-badge">🎁 豪礼投喂</div><div>感谢 <b>${user}</b> ${content}！</div>`;
+      } else {
+        item.innerHTML = `<div class="danmu-user-badge">💬 ${user}</div><div>${content}</div>`;
+      }
+
+      danmuStream.appendChild(item);
+      if (danmuStream.children.length > 5) {
+        danmuStream.removeChild(danmuStream.firstChild);
+      }
+    }
+
+    function processQueue() {
+      if (isPlaying || speechQueue.length === 0) return;
+      isPlaying = true;
+      const task = speechQueue.shift();
+
+      fishText.innerText = task.text;
+      fishDialog.classList.add('show');
+
+      if (task.audio_url) {
+        audioPlayer.src = task.audio_url;
+
+        audioPlayer.onplay = () => {
+          setAudioDucking(true);
+          startSpeaking();
+        };
+
+        audioPlayer.onended = () => {
+          stopSpeaking();
+          setAudioDucking(false);
+          setTimeout(() => {
+            fishDialog.classList.remove('show');
+            isPlaying = false;
+            processQueue();
+          }, 1500);
+        };
+
+        audioPlayer.play().catch(e => {
+          console.warn('点击任意位置解锁音频播放', e);
+          setAudioDucking(true);
+          startSpeaking();
+          setTimeout(() => {
+            stopSpeaking();
+            setAudioDucking(false);
+            fishDialog.classList.remove('show');
+            isPlaying = false;
+            processQueue();
+          }, 3500);
+        });
+      } else {
+        startSpeaking();
+        setTimeout(() => {
+          stopSpeaking();
+          fishDialog.classList.remove('show');
+          isPlaying = false;
+          processQueue();
+        }, 3500);
+      }
+    }
+
+    sendBtn.onclick = () => {
+      const text = msgInput.value.trim();
+      if (text) {
+        sendCustomEvent('chat', '热心水友', text);
+        msgInput.value = '';
+      }
+    };
+    msgInput.onkeydown = (e) => {
+      if (e.key === 'Enter') sendBtn.click();
+    };
+
+    // ---------------- 10. 配置弹窗逻辑 ----------------
+    const configModal = document.getElementById('configModal');
+    const openConfigBtn = document.getElementById('openConfigBtn');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const cancelModalBtn = document.getElementById('cancelModalBtn');
+    const saveConfigBtn = document.getElementById('saveConfigBtn');
+    const cfgBaseUrl = document.getElementById('cfgBaseUrl');
+    const cfgApiKey = document.getElementById('cfgApiKey');
+    const cfgModel = document.getElementById('cfgModel');
+    const cfgVoice = document.getElementById('cfgVoice');
+    const cfgPrompt = document.getElementById('cfgPrompt');
+
+    openConfigBtn.onclick = () => {
+      fetch('/api/config')
+        .then(res => res.json())
+        .then(cfg => {
+          cfgBaseUrl.value = cfg.base_url || 'http://dxcool.cn:7863/v1';
+          cfgApiKey.value = cfg.api_key && cfg.api_key !== 'YOUR_API_KEY_HERE' ? cfg.api_key : '';
+          cfgModel.value = cfg.model || 'deepseek-chat';
+          cfgVoice.value = cfg.voice || 'zh-CN-liaoning-XiaobeiNeural';
+          cfgPrompt.value = cfg.system_prompt || '';
+          configModal.style.display = 'flex';
+        })
+        .catch(() => {
+          configModal.style.display = 'flex';
+        });
+    };
+
+    function closeModal() { configModal.style.display = 'none'; }
+    closeModalBtn.onclick = closeModal;
+    cancelModalBtn.onclick = closeModal;
+
+    saveConfigBtn.onclick = () => {
+      saveConfigBtn.innerText = '正在保存...';
+      fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          base_url: cfgBaseUrl.value.trim(),
+          api_key: cfgApiKey.value.trim(),
+          model: cfgModel.value.trim(),
+          voice: cfgVoice.value,
+          system_prompt: cfgPrompt.value.trim()
+        })
+      })
+      .then(res => res.json())
+      .then(() => {
+        saveConfigBtn.innerText = '保存成功！';
+        setTimeout(() => {
+          saveConfigBtn.innerText = '保存并生效';
+          closeModal();
+        }, 500);
+      })
+      .catch(err => {
+        alert('保存失败: ' + err);
+        saveConfigBtn.innerText = '保存并生效';
+      });
+    };
+
+    // 交互解锁音频
+    document.body.addEventListener('click', () => {
+      if (audioPlayer.paused && audioPlayer.src) {
+        audioPlayer.play().catch(() => {});
+      }
+      if (bgmPlayer.paused && bgmPlayer.src) {
+        bgmPlayer.play().catch(() => {});
+      }
+    }, { once: true });
+  </script>
+</body>
+</html>

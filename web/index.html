@@ -1,0 +1,2046 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>大肥鱼 AI 互动无人直播间</title>
+
+  <!-- 引入 Live2D Cubism 4 & PixiJS 官方运行库 -->
+  <script src="/live2d_lib/live2dcubismcore.min.js"></script>
+  <script src="/live2d_lib/pixi.min.js"></script>
+  <script src="/live2d_lib/cubism4.min.js"></script>
+
+  <!-- 引入 3D WebGL 骨骼动力学跳舞引擎 (Three.js & GLTF 动作加载器) -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "/3d/three.module.js",
+        "three/addons/": "/3d/"
+      }
+    }
+  </script>
+  <script type="module" src="/3d/character_dance.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #030712 url('/bg_aquarium.jpg') no-repeat center center / cover;
+      color: #f8fafc;
+      position: relative;
+    }
+
+    /* 电影感暗角与深海光晕 */
+    .cinematic-vignette {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 50%, rgba(2, 6, 23, 0.05) 0%, rgba(2, 6, 23, 0.45) 75%, rgba(2, 6, 23, 0.82) 100%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* 通用玻璃拟物卡片 */
+    .glass-card {
+      background: rgba(10, 18, 30, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(56, 189, 248, 0.22);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      z-index: 20;
+    }
+
+    /* =========================================================================
+       1. 顶部操作与状态栏 (Top Toolbar)
+       ========================================================================= */
+    .top-toolbar {
+      position: absolute;
+      top: 10px;
+      left: 16px;
+      right: 16px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      background: rgba(8, 15, 28, 0.85);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+      z-index: 100;
+    }
+
+    .toolbar-left, .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 800;
+      color: #38bdf8;
+      text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+      letter-spacing: 0.5px;
+    }
+
+    .btn-action {
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: #e2e8f0;
+      padding: 5px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-action:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: #38bdf8;
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      border: 1px solid #38bdf8;
+      color: #fff;
+    }
+
+    .btn-purple {
+      background: rgba(168, 85, 247, 0.25);
+      border-color: #a855f7;
+      color: #d8b4fe;
+    }
+
+    /* 顶部滚动走字公告条 */
+    .toolbar-ticker {
+      flex: 1;
+      max-width: 620px;
+      margin: 0 16px;
+      overflow: hidden;
+      white-space: nowrap;
+      position: relative;
+      font-size: 12px;
+      color: #cbd5e1;
+      background: rgba(2, 6, 23, 0.45);
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .ticker-content {
+      display: inline-block;
+      animation: tickerScroll 24s linear infinite;
+    }
+
+    @keyframes tickerScroll {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+
+    /* 声音未激活提示徽章 (嵌在顶部，不重叠遮挡) */
+    .audio-unlock-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #fff;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      animation: pulseAlert 1.6s infinite ease-in-out;
+    }
+
+    @keyframes pulseAlert {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 6px rgba(245, 158, 11, 0.5); }
+      50% { transform: scale(1.04); box-shadow: 0 0 14px rgba(245, 158, 11, 0.85); }
+    }
+
+    /* =========================================================================
+       2. 顶部微型成长进度条 (Evolution Widget)
+       ========================================================================= */
+    .evolution-widget {
+      position: absolute;
+      top: 62px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 440px;
+      background: rgba(10, 18, 30, 0.8);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 10px;
+      padding: 6px 14px;
+      z-index: 25;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+    }
+
+    .evolution-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+
+    .evolution-badge {
+      background: linear-gradient(135deg, #38bdf8, #0284c7);
+      color: #fff;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
+    .evolution-target {
+      color: #94a3b8;
+    }
+
+    .evolution-val {
+      color: #facc15;
+      font-weight: 700;
+    }
+
+    .evolution-progress-track {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .evolution-progress-fill {
+      height: 100%;
+      width: 36%;
+      background: linear-gradient(90deg, #38bdf8, #f43f5e);
+      border-radius: 3px;
+      transition: width 0.4s ease;
+    }
+
+    /* =========================================================================
+       3. 左侧栏：榜一宝座 + 核心玩法指南 (Left Column)
+       ========================================================================= */
+    .champion-throne-card {
+      position: absolute;
+      top: 62px;
+      left: 16px;
+      width: 310px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 10px;
+      background: linear-gradient(135deg, rgba(30, 27, 75, 0.8), rgba(15, 23, 42, 0.85));
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      border-radius: 10px;
+      z-index: 30;
+      box-shadow: 0 4px 15px rgba(245, 158, 11, 0.15);
+    }
+
+    .throne-crown {
+      font-size: 24px;
+      animation: crownBounce 2s ease-in-out infinite;
+    }
+
+    @keyframes crownBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+
+    .throne-info {
+      flex: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .throne-title {
+      font-size: 11px;
+      color: #f59e0b;
+      font-weight: 700;
+    }
+
+    .throne-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .throne-score {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    /* AI 功能玩法导览卡片 (无文字折行、紧凑精致) */
+    .ai-guide-board {
+      position: absolute;
+      top: 122px;
+      left: 16px;
+      width: 310px;
+      padding: 10px 12px;
+      z-index: 30;
+    }
+
+    .board-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      white-space: nowrap;
+    }
+
+    .board-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #38bdf8;
+    }
+
+    .board-badge {
+      font-size: 10px;
+      background: rgba(56, 189, 248, 0.18);
+      color: #7dd3fc;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .board-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .board-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.45);
+      padding: 5px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .board-row-icon {
+      font-size: 16px;
+      line-height: 1.2;
+    }
+
+    .board-row-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .board-row-name {
+      font-size: 11px;
+      font-weight: 700;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .board-tag {
+      font-size: 9px;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+    .tag-music { background: rgba(56, 189, 248, 0.25); color: #38bdf8; }
+    .tag-chat { background: rgba(34, 197, 94, 0.25); color: #4ade80; }
+    .tag-game { background: rgba(168, 85, 247, 0.25); color: #c084fc; }
+    .tag-fun { background: rgba(245, 158, 11, 0.25); color: #fbbf24; }
+
+    .board-row-desc {
+      font-size: 10px;
+      color: #94a3b8;
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+
+    .board-row-desc code {
+      color: #facc15;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 0 3px;
+      border-radius: 3px;
+      font-family: inherit;
+    }
+
+    .board-footer {
+      margin-top: 8px;
+      font-size: 10px;
+      color: #64748b;
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    /* =========================================================================
+       4. 左下角：多彩弹幕瀑布流 (Danmu Stream)
+       ========================================================================= */
+    .danmu-waterfall {
+      position: absolute;
+      bottom: 74px;
+      left: 16px;
+      width: 330px;
+      height: 300px;
+      overflow-y: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 6px;
+      pointer-events: none;
+      z-index: 30;
+      mask-image: linear-gradient(to top, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 100%);
+      -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 100%);
+    }
+
+    .danmu-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(8, 15, 28, 0.78);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 4px 10px;
+      font-size: 12px;
+      line-height: 1.4;
+      animation: danmuSlideUp 0.3s ease-out;
+      width: fit-content;
+      max-width: 100%;
+    }
+
+    @keyframes danmuSlideUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .danmu-badge {
+      font-size: 9px;
+      padding: 1px 5px;
+      border-radius: 10px;
+      font-weight: 700;
+    }
+    .badge-user { background: rgba(56, 189, 248, 0.25); color: #38bdf8; }
+    .badge-vip { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; }
+    .badge-join { background: rgba(34, 197, 94, 0.25); color: #4ade80; }
+    .badge-gift { background: linear-gradient(135deg, #ec4899, #be185d); color: #fff; }
+
+    .danmu-name {
+      font-weight: 700;
+      color: #94a3b8;
+    }
+
+    .danmu-text {
+      color: #f8fafc;
+      word-break: break-all;
+    }
+
+    /* =========================================================================
+       5. 右侧栏：黑胶唱机挂件 + 点歌排队卡片 (Right Column)
+       ========================================================================= */
+    .vinyl-player-widget {
+      position: absolute;
+      top: 62px;
+      right: 16px;
+      width: 310px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      gap: 10px;
+      z-index: 30;
+    }
+
+    .vinyl-disc {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #1e293b 0%, #020617 70%, #0f172a 100%);
+      border: 2px solid #334155;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      animation: vinylSpin 6s linear infinite;
+    }
+
+    @keyframes vinylSpin {
+      100% { transform: rotate(360deg); }
+    }
+
+    .vinyl-disc-core {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #0284c7;
+      border: 2px solid #fff;
+    }
+
+    .vinyl-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .vinyl-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: #f8fafc;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .vinyl-artist {
+      font-size: 10px;
+      color: #94a3b8;
+    }
+
+    .audio-equalizer {
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 14px;
+    }
+
+    .eq-bar {
+      width: 3px;
+      background: #38bdf8;
+      border-radius: 1px;
+      animation: eqBounce 1s ease-in-out infinite alternate;
+    }
+    .eq-bar:nth-child(1) { height: 40%; animation-delay: 0.1s; }
+    .eq-bar:nth-child(2) { height: 90%; animation-delay: 0.3s; }
+    .eq-bar:nth-child(3) { height: 60%; animation-delay: 0.2s; }
+    .eq-bar:nth-child(4) { height: 100%; animation-delay: 0.4s; }
+
+    @keyframes eqBounce {
+      0% { height: 20%; }
+      100% { height: 100%; }
+    }
+
+    /* 点歌排队卡片 */
+    .song-queue-card {
+      position: absolute;
+      top: 122px;
+      right: 16px;
+      width: 310px;
+      padding: 10px 12px;
+      z-index: 30;
+    }
+
+    .queue-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .queue-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #c084fc;
+    }
+
+    .queue-count {
+      font-size: 10px;
+      color: #cbd5e1;
+      background: rgba(168, 85, 247, 0.2);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .queue-now-playing {
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 8px;
+    }
+
+    .now-playing-label {
+      font-size: 9px;
+      color: #38bdf8;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+
+    .now-playing-song {
+      font-size: 12px;
+      font-weight: 800;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .now-playing-meta {
+      font-size: 10px;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+
+    .queue-list-container {
+      max-height: 140px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .queue-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 6px;
+      background: rgba(2, 6, 23, 0.35);
+      border-radius: 5px;
+      font-size: 11px;
+    }
+
+    .queue-item-name {
+      color: #e2e8f0;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 170px;
+    }
+
+    .queue-item-user {
+      font-size: 10px;
+      color: #94a3b8;
+    }
+
+    .queue-empty-tip {
+      font-size: 11px;
+      color: #64748b;
+      text-align: center;
+      padding: 12px 0;
+    }
+
+    .queue-bottom-tip {
+      margin-top: 8px;
+      font-size: 10px;
+      color: #facc15;
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    /* 右下角：防录播真人实时钟表 (Anti-Ban Live Clock) */
+    .live-clock-badge {
+      position: absolute;
+      bottom: 20px;
+      right: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #f8fafc;
+      z-index: 40;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .live-pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ef4444;
+      box-shadow: 0 0 8px #ef4444;
+      animation: pulseDot 1s infinite;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .live-clock-time {
+      font-family: monospace;
+      color: #facc15;
+      letter-spacing: 0.5px;
+    }
+
+    /* =========================================================================
+       6. 核心舞台区：大肥鱼 3D 萌宠 + Live2D 虚拟伴播 (Stage Viewport)
+       ========================================================================= */
+    .stage-viewport {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    /* 6.1 大肥鱼 Parallax 容器 */
+    .avatar-parallax-wrapper {
+      position: absolute;
+      width: 480px;
+      height: 480px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      pointer-events: auto;
+      transition: all 0.4s ease;
+      z-index: 15;
+    }
+
+    .anime-avatar-frame {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      animation: whaleHyperActive 4.5s ease-in-out infinite;
+      transition: transform 0.15s ease-out;
+    }
+
+    #animeImage {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.65)) contrast(1.05) brightness(1.02);
+      pointer-events: none;
+    }
+
+    /* 大肥鱼高频生动 3D 游动动画 (消除生硬与录播感) */
+    @keyframes whaleHyperActive {
+      0% {
+        transform: translate3d(0, 0, 0) rotate(0deg) scale(1, 1);
+      }
+      20% {
+        transform: translate3d(35px, -22px, 20px) rotate(3.2deg) scale(1.03, 0.98);
+      }
+      45% {
+        transform: translate3d(60px, 8px, 10px) rotate(-1.5deg) scale(0.98, 1.02);
+      }
+      70% {
+        transform: translate3d(-40px, -18px, -15px) rotate(-3.5deg) scale(1.02, 0.98);
+      }
+      88% {
+        transform: translate3d(-15px, 15px, 0px) rotate(1.8deg) scale(0.99, 1.01);
+      }
+      100% {
+        transform: translate3d(0, 0, 0) rotate(0deg) scale(1, 1);
+      }
+    }
+
+    /* AI 说话时大肥鱼果冻蹦跳律动 */
+    .whale-talking {
+      animation: whaleTalkBeat 0.32s infinite alternate ease-in-out !important;
+    }
+
+    @keyframes whaleTalkBeat {
+      0% { transform: translateY(0) scale(1, 1); }
+      100% { transform: translateY(-16px) scale(1.06, 0.94); }
+    }
+
+    
+    
+    /* =========================================================================
+       6.3 3D 动作与舞蹈引擎 (Dance & Dynamic Motion Engine)
+       ========================================================================= */
+    .girl-vtuber-wrapper {
+      position: absolute;
+      width: 560px;
+      height: 800px;
+      pointer-events: auto;
+      transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+      z-index: 18;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transform-style: preserve-3d;
+      perspective: 1000px;
+    }
+
+    .girl-vtuber-frame {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      animation: girlLiveBreathing 3.6s ease-in-out infinite;
+      transform-origin: center 85%;
+      transform-style: preserve-3d;
+      transition: filter 0.3s ease;
+    }
+
+    #girlImage {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 25px rgba(56, 189, 248, 0.25)) contrast(1.04) brightness(1.02);
+      pointer-events: none;
+      transition: transform 0.2s ease-out;
+    }
+
+    /* 3D WebGL 真实骨骼舞台 Canvas */
+    #threeStageCanvas {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 5;
+      pointer-events: auto;
+    }
+
+    /* 3D 激活后平滑隐藏 2D 静态贴图，并由 3D 骨骼独立跳舞 */
+    .mode-3d-active #girlImage {
+      display: none !important;
+    }
+    .mode-3d-active #girlWaveHand {
+      display: none !important;
+    }
+    .mode-3d-active.girl-dancing {
+      animation: none !important;
+    }
+    .mode-3d-active {
+      animation: none !important;
+    }
+
+    /* 6.3.1 日常待机大幅度灵动呼吸与晃动 (告别死板) */
+    @keyframes girlLiveBreathing {
+      0% {
+        transform: translateY(0px) rotate(0deg) scale(1, 1);
+      }
+      25% {
+        transform: translateY(-14px) rotate(1.8deg) scale(1.02, 0.98);
+      }
+      50% {
+        transform: translateY(-6px) rotate(-1.5deg) scale(0.99, 1.01);
+      }
+      75% {
+        transform: translateY(-18px) rotate(2.2deg) scale(1.025, 0.975);
+      }
+      100% {
+        transform: translateY(0px) rotate(0deg) scale(1, 1);
+      }
+    }
+
+    /* 6.3.2 说话时少女欢快开麦律动 */
+    .girl-talking {
+      animation: girlLiveTalk 0.38s infinite alternate ease-in-out !important;
+    }
+
+    @keyframes girlLiveTalk {
+      0% { transform: translateY(0) rotate(0deg) scale(1, 1); }
+      100% { transform: translateY(-22px) rotate(2.5deg) scale(1.04, 0.96); }
+    }
+
+    /* 6.3.3 【极乐净土 / 宅舞模式】超高能 3D 全身舞蹈动效 */
+    .girl-dancing {
+      animation: girlGokurakuDance 1.25s infinite ease-in-out !important;
+    }
+
+    @keyframes girlGokurakuDance {
+      0% {
+        transform: translate3d(0, 0, 0) rotate(0deg) rotateY(0deg) scale(1, 1);
+      }
+      15% {
+        transform: translate3d(-35px, -30px, 30px) rotate(-6.5deg) rotateY(-18deg) scale(1.06, 0.94);
+      }
+      30% {
+        transform: translate3d(0, -8px, 0px) rotate(2deg) rotateY(0deg) scale(0.95, 1.05);
+      }
+      45% {
+        transform: translate3d(38px, -34px, 35px) rotate(7deg) rotateY(20deg) scale(1.07, 0.93);
+      }
+      60% {
+        transform: translate3d(18px, 6px, 15px) rotate(-3deg) rotateY(8deg) scale(0.97, 1.03);
+      }
+      75% {
+        transform: translate3d(-25px, -24px, 20px) rotate(-5deg) rotateY(-12deg) scale(1.04, 0.96);
+      }
+      88% {
+        transform: translate3d(10px, -15px, 10px) rotate(3deg) rotateY(5deg) scale(1.02, 0.98);
+      }
+      100% {
+        transform: translate3d(0, 0, 0) rotate(0deg) rotateY(0deg) scale(1, 1);
+      }
+    }
+
+    /* 伴舞状态下，大肥鱼萌宠也同步高能欢呼伴舞 */
+    .fish-dancing {
+      animation: fishSyncDance 0.62s infinite alternate ease-in-out !important;
+    }
+
+    @keyframes fishSyncDance {
+      0% { transform: translateY(0) rotate(-4deg) scale(1, 1); }
+      100% { transform: translateY(-42px) rotate(8deg) scale(1.12, 0.88); }
+    }
+
+    /* 舞台射灯与派对霓虹光效 (跳舞时自动点亮全场) */
+    .stage-party-lights {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 8;
+      background: radial-gradient(circle at 65% 55%, rgba(236, 72, 153, 0.28) 0%, transparent 60%),
+                  radial-gradient(circle at 35% 50%, rgba(56, 189, 248, 0.25) 0%, transparent 55%);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      mix-blend-mode: screen;
+    }
+
+    .stage-party-lights.active {
+      opacity: 1;
+      animation: partyLaser 2.4s ease-in-out infinite alternate;
+    }
+
+    @keyframes partyLaser {
+      0% { filter: hue-rotate(0deg) brightness(1.2); }
+      100% { filter: hue-rotate(180deg) brightness(1.5); }
+    }
+
+    /* 模式排版控制：
+       1. mode-combo: 大肥鱼女孩居右，可爱大肥鱼居左，默契同台
+       2. mode-fish: 萌鱼独占舞台中央
+       3. mode-live2d: 大肥鱼女孩独占舞台中央
+    */
+    .mode-combo .avatar-parallax-wrapper {
+      left: 35%;
+      top: 48%;
+      transform: translate(-50%, -50%) scale(1.05);
+      display: flex !important;
+    }
+    .mode-combo .girl-vtuber-wrapper {
+      left: 63%;
+      top: 52%;
+      transform: translate(-50%, -50%) scale(1);
+      display: flex !important;
+    }
+
+    .mode-fish .avatar-parallax-wrapper {
+      left: 50%;
+      top: 47%;
+      transform: translate(-50%, -50%) scale(1.25);
+      display: flex !important;
+    }
+    .mode-fish .girl-vtuber-wrapper {
+      display: none !important;
+    }
+
+    .mode-live2d .avatar-parallax-wrapper {
+      display: none !important;
+    }
+    .mode-live2d .girl-vtuber-wrapper {
+      left: 50%;
+      top: 48%;
+      transform: translate(-50%, -50%) scale(1.15);
+      display: flex !important;
+    }
+
+
+    /* =========================================================================
+       7. 抖音爆款高光字幕条 (Punch Subtitle)
+       ========================================================================= */
+    .douyin-punch-subtitle {
+      position: absolute;
+      bottom: 74px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 660px;
+      background: rgba(10, 18, 30, 0.88);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      border-radius: 30px;
+      padding: 6px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(56, 189, 248, 0.2);
+      z-index: 50;
+      transition: all 0.3s ease;
+    }
+
+    .punch-speaker-tag {
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 10px;
+      border-radius: 14px;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+    }
+
+    .punch-text {
+      font-size: 13px;
+      font-weight: 700;
+      color: #f8fafc;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+
+    /* =========================================================================
+       8. 实时进房/点赞高光飘屏通报 (Event Toast)
+       ========================================================================= */
+    .live-event-toast {
+      position: absolute;
+      top: 112px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: linear-gradient(135deg, rgba(236, 72, 153, 0.9), rgba(168, 85, 247, 0.9));
+      color: #fff;
+      padding: 5px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 20px rgba(236, 72, 153, 0.4);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+      z-index: 60;
+    }
+
+    .live-event-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* =========================================================================
+       9. 听前奏猜歌挑战横幅 (Guess Song Banner)
+       ========================================================================= */
+    .guess-song-banner {
+      position: absolute;
+      top: 112px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 480px;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(168, 85, 247, 0.5);
+      border-radius: 12px;
+      padding: 10px 16px;
+      z-index: 55;
+      box-shadow: 0 8px 30px rgba(168, 85, 247, 0.3);
+    }
+
+    .guess-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 800;
+      color: #c084fc;
+      margin-bottom: 4px;
+    }
+
+    .guess-hint {
+      font-size: 13px;
+      font-weight: 700;
+      color: #facc15;
+      text-align: center;
+      margin: 4px 0;
+    }
+
+    .guess-cta {
+      font-size: 10px;
+      color: #94a3b8;
+      text-align: center;
+    }
+
+    .guess-progress-bar {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+
+    .guess-progress-inner {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #c084fc, #ec4899);
+      transition: width 1s linear;
+    }
+
+    /* =========================================================================
+       10. 底部中控控制条 (Bottom Bar)
+       ========================================================================= */
+    .bottom-bar {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 620px;
+      display: flex;
+      gap: 8px;
+      background: rgba(10, 18, 30, 0.85);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 24px;
+      padding: 4px 6px 4px 14px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      z-index: 80;
+    }
+
+    .bottom-bar input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-size: 12px;
+    }
+
+    .bottom-bar input::placeholder {
+      color: #64748b;
+    }
+
+    /* 纯净推流模式 (按 H 键切换，OBS 捕获无杂质) */
+    body.clean-mode .top-toolbar,
+    body.clean-mode .bottom-bar {
+      display: none !important;
+    }
+  </style>
+</head>
+
+<body class="mode-combo">
+
+  <!-- 电影感暗角 -->
+  <div class="cinematic-vignette"></div>
+  <div class="stage-party-lights" id="stagePartyLights"></div>
+
+  <!-- 1. 顶部操作与控制栏 -->
+  <div class="top-toolbar" id="topToolbar">
+    <div class="toolbar-left">
+      <div class="brand-title">👑 大肥鱼 AI 智能直播</div>
+      <button class="btn-action btn-purple" id="switchDisplayModeBtn" title="切换展示模式">
+        🎭 模式: 双模同台
+      </button>
+      <div class="audio-unlock-badge" id="audioUnlockTip" onclick="unlockAudio()" title="点击开启声音与伴奏">
+        🔊 激活音频
+      </div>
+    </div>
+
+    <!-- 顶部居中走字滚动告示条 -->
+    <div class="toolbar-ticker">
+      <div class="ticker-content">
+        🔥 <b>实时互动指南</b>：公屏发送 <code>点歌 歌名</code> 免费排队点播 ✦ 发送 <code>猜歌</code> 赢状元金曲 ✦ 双击屏幕为大肥鱼点赞加体重 ✦ 发送 <code>投喂</code> 帮助大肥鱼快速进化！
+      </div>
+    </div>
+
+    <div class="toolbar-right">
+      <button class="btn-action btn-dance" id="danceBtn" style="background: linear-gradient(135deg, #ec4899, #f43f5e); border: 1px solid #fda4af; color: #fff;">💃 极乐净土(跳舞)</button>
+      <button class="btn-action btn-purple" id="triggerGuessBtn">🎵 猜歌</button>
+      <button class="btn-action btn-primary" id="feedFishBtn">🐟 投喂(+10斤)</button>
+      <button class="btn-action" id="skipSongBtn">⏭️ 切歌</button>
+      <button class="btn-action" id="broadcastRuleBtn">📢 播报</button>
+      <button class="btn-action" id="hideUiBtn" title="按 H 键恢复显示">👁️ 纯净推流</button>
+    </div>
+  </div>
+
+  <!-- 2. 顶部微型成长进度条 -->
+  <div class="evolution-widget" id="evolutionWidget">
+    <div class="evolution-header">
+      <span class="evolution-badge" id="evoLevelBadge">Lv.1 呆萌幼鲸</span>
+      <span class="evolution-target" id="evoTargetText">目标: 进化为【Lv.2 傲娇暴食肥鱼】</span>
+      <span class="evolution-val" id="evoValText">180 / 500 斤 (36%)</span>
+    </div>
+    <div class="evolution-progress-track">
+      <div class="evolution-progress-fill" id="evoProgressFill" style="width: 36%;"></div>
+    </div>
+  </div>
+
+  <!-- 3. 左侧栏：榜一宝座 + 核心功能指示卡片 -->
+  <div class="champion-throne-card" id="championThrone" title="今日贡献最高的大哥">
+    <div class="throne-crown">👑</div>
+    <div class="throne-info">
+      <div>
+        <div class="throne-title">今日榜一战神</div>
+        <div class="throne-name" id="throneUser">虚位以待</div>
+      </div>
+      <div class="throne-score" id="throneScore">贡献 0 鱼干</div>
+    </div>
+  </div>
+
+  <div class="glass-card ai-guide-board" id="aiGuideBoard">
+    <div class="board-header">
+      <span class="board-title">✨ 大肥鱼 AI 核心玩法</span>
+      <span class="board-badge">⚡ 24H 无人值守</span>
+    </div>
+    <div class="board-list">
+      <div class="board-row">
+        <div class="board-row-icon">🎵</div>
+        <div class="board-row-content">
+          <div class="board-row-name">全网热歌 Hi-Fi 点唱 <span class="board-tag tag-music">本地优先</span></div>
+          <div class="board-row-desc">公屏发送 <code>点歌 歌名</code>，优先秒播本地 music 歌单原唱！</div>
+        </div>
+      </div>
+      <div class="board-row">
+        <div class="board-row-icon">💬</div>
+        <div class="board-row-content">
+          <div class="board-row-name">傲娇毒舌陪聊互动 <span class="board-tag tag-chat">句句有梗</span></div>
+          <div class="board-row-desc">公屏任意打字调侃，大肥鱼东北风妙语连珠，张嘴秒回！</div>
+        </div>
+      </div>
+      <div class="board-row">
+        <div class="board-row-icon">🎮</div>
+        <div class="board-row-content">
+          <div class="board-row-name">听前奏猜歌盲盒 <span class="board-tag tag-game">状元挑战</span></div>
+          <div class="board-row-desc">公屏发送 <code>猜歌</code> 开启 20 秒金曲前奏盲盒挑战！</div>
+        </div>
+      </div>
+      <div class="board-row">
+        <div class="board-row-icon">🔮</div>
+        <div class="board-row-content">
+          <div class="board-row-name">东北玄学测人品 <span class="board-tag tag-fun">句句扎心</span></div>
+          <div class="board-row-desc">公屏发送 <code>算命+名字</code> 或 <code>测人品</code>，掐指批八字！</div>
+        </div>
+      </div>
+      <div class="board-row">
+        <div class="board-row-icon">🐟</div>
+        <div class="board-row-content">
+          <div class="board-row-name">投喂小鱼干养成巨鲸 <span class="board-tag tag-fun">全屏特效</span></div>
+          <div class="board-row-desc">点赞体重+1斤，发 <code>投喂</code> +5斤，送礼+50斤抢登黄金宝座！</div>
+        </div>
+      </div>
+    </div>
+    <div class="board-footer">
+      💡 DeepSeek 驱动 · 实时互动秒回 · 点关注不迷路
+    </div>
+  </div>
+
+  <!-- 4. 左下角：弹幕瀑布流 -->
+  <div class="danmu-waterfall" id="danmuStream"></div>
+
+  <!-- 5. 右侧栏：黑胶唱机 + 点歌排队卡片 -->
+  <div class="glass-card vinyl-player-widget" id="vinylWidget" title="正在播放的音乐">
+    <div class="vinyl-disc" id="vinylDisc">
+      <div class="vinyl-disc-core"></div>
+    </div>
+    <div class="vinyl-info">
+      <div class="vinyl-title" id="currentSongTitle">🎵 治愈深海纯音乐</div>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span class="vinyl-artist" id="currentSongArtist">大肥鱼精选电台</span>
+        <div class="audio-equalizer">
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="glass-card song-queue-card" id="songQueueCard">
+    <div class="queue-header">
+      <span class="queue-title">🎵 实时点歌台</span>
+      <span class="queue-count" id="queueCountBadge">排队 0 首</span>
+    </div>
+    <div class="queue-now-playing">
+      <div class="now-playing-label">🎧 正在播放:</div>
+      <div class="now-playing-song" id="nowPlayingSongName">治愈深海纯音乐</div>
+      <div class="now-playing-meta" id="nowPlayingRequester">大肥鱼精选电台</div>
+    </div>
+    <div class="queue-list-container" id="queueList">
+      <div class="queue-empty-tip">💡 公屏发送【点歌 歌名】即可免费排队点播！</div>
+    </div>
+    <div class="queue-bottom-tip">
+      ✦ 单曲完整播放完毕后自动切下一首 ✦
+    </div>
+  </div>
+
+  <!-- 6. 右下角：防录播真人动态时钟 -->
+  <div class="live-clock-badge" id="liveClockBadge">
+    <div class="live-pulse-dot"></div>
+    <span>🔴 LIVE 实时直播</span>
+    <span class="live-clock-time" id="liveClockTime">2026-10-29 08:50:00</span>
+  </div>
+
+  <!-- 7. 居中高光通报浮窗 -->
+  <div class="live-event-toast" id="liveEventToast">
+    <span id="eventToastIcon">🎉</span>
+    <span id="eventToastText">欢迎进入大肥鱼直播间！</span>
+  </div>
+
+  <!-- 8. 听前奏猜歌挑战浮窗 -->
+  <div class="guess-song-banner" id="guessSongBanner" style="display: none;">
+    <div class="guess-header">
+      <span class="guess-title">🎵【听前奏猜歌盲盒大挑战】</span>
+      <span class="guess-timer" id="guessTimerText">⏳ 20s</span>
+    </div>
+    <div class="guess-hint" id="guessHintText">提示：4 个字的经典热门金曲</div>
+    <div class="guess-cta">谁能第 1 个在弹幕打出正确歌名？直接加冕【猜歌状元】并送出全曲！</div>
+    <div class="guess-progress-bar"><div class="guess-progress-inner" id="guessProgressInner"></div></div>
+  </div>
+
+  <!-- 9. C 位核心舞台：大肥鱼 3D 萌宠 + Live2D 虚拟伴播 -->
+  <div class="stage-viewport" id="stageViewport">
+
+    <!-- 9.1 大肥鱼 3D 萌宠 (高能游曳+说话律动+鼠标跟随) -->
+    <div class="avatar-parallax-wrapper" id="avatarParallax">
+      <div class="anime-avatar-frame" id="avatarFrame" title="点击戳戳大肥鱼！">
+        <img id="animeImage" src="/dafeiyu_cute_fish.png" alt="标志性大肥鱼" />
+      </div>
+    </div>
+
+    <!-- 9.2 Live2D 虚拟主播小人 (面部表情完全展示，不截断) -->
+    <!-- 9.2 大肥鱼专属二次元女孩 VTuber 主播 -->
+    <div id="live2dWrapper" class="girl-vtuber-wrapper" title="点击与大肥鱼女孩互动">
+      <div class="girl-vtuber-frame" id="girlFrame">
+        <canvas id="threeStageCanvas"></canvas>
+        <img id="girlImage" src="/dafeiyu_girl_3d_transparent.png" alt="大肥鱼女孩" />
+        <div class="girl-wave-hand" id="girlWaveHand"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 10. 抖音爆款高光字幕条 -->
+  <div class="douyin-punch-subtitle" id="douyinSubtitle">
+    <div class="punch-speaker-tag">🐟 大肥鱼开麦</div>
+    <div class="punch-text" id="douyinSubtitleText">老铁们进屋往里坐！想听歌打“点歌 晴天”，本鱼随时安排！</div>
+  </div>
+
+  <!-- 11. 底部输入控制条 -->
+  <div class="bottom-bar" id="bottomBar">
+    <input type="text" id="msgInput" placeholder="发弹幕调侃（如：大肥鱼你好、点歌 晴天、猜歌、算命 李四）或回车发送..." />
+    <button class="btn-action btn-primary" id="sendBtn">发送弹幕</button>
+  </div>
+
+  <audio id="audioPlayer"></audio>
+  <audio id="bgmPlayer" loop></audio>
+
+  <!-- =========================================================================
+       12. 前端核心交互逻辑
+       ========================================================================= -->
+  <script>
+    let ws = null;
+    let audioUnlocked = false;
+    let currentWeight = 180;
+    const targetWeight = 500;
+    let currentLevel = 1;
+    let guessTimer = null;
+    let currentGuessSong = null;
+
+    // 点歌队列系统
+    let songQueue = [];
+    let isPlayingSong = false;
+    let currentPlayingSong = null;
+
+    // Live2D 变量挂载到 window，便于调试与控制
+    window.live2dModel = null;
+    window.live2dApp = null;
+    let displayModes = ['combo', 'fish', 'live2d']; // combo: 双模, fish: 纯鱼, live2d: 纯小人
+    let currentModeIndex = 0;
+
+    // 音频初始化
+    function unlockAudio() {
+      if (audioUnlocked) return;
+      audioUnlocked = true;
+      const audio = document.getElementById('audioPlayer');
+      const bgm = document.getElementById('bgmPlayer');
+      audio.play().then(() => audio.pause()).catch(() => {});
+      bgm.play().then(() => bgm.pause()).catch(() => {});
+      const tip = document.getElementById('audioUnlockTip');
+      if (tip) tip.style.display = 'none';
+      console.log('✅ 音频上下文已解锁');
+    }
+    document.addEventListener('click', unlockAudio, { once: true });
+
+    // 初始化 Live2D Cubism 4 模型
+    async function initLive2D() {
+      try {
+        const canvas = document.getElementById('live2dCanvas');
+        if (!canvas || !window.PIXI || !PIXI.live2d) {
+          console.warn('[Live2D] PIXI 或 Live2D 库未准备完毕');
+          return;
+        }
+        if (window.live2dApp) return;
+
+        window.live2dApp = new PIXI.Application({
+          view: canvas,
+          transparent: true,
+          autoDensity: true,
+          antialias: true,
+          width: 800,
+          height: 900,
+          backgroundAlpha: 0
+        });
+
+        const model = await PIXI.live2d.Live2DModel.from('/live2d/haru/haru_greeter_t03.model3.json', {
+          autoInteract: false
+        });
+
+        window.live2dModel = model;
+        window.live2dApp.stage.addChild(model);
+
+        // 精准缩放与坐标配置：头部从顶部 20px 开始，面部表情完好展现，绝不截断
+        model.scale.set(0.16);
+        model.anchor.set(0.5, 0.0);
+        model.x = 400;
+        model.y = 20;
+
+        // 视线 3D 鼠标注视跟随
+        window.addEventListener('mousemove', (e) => {
+          if (window.live2dModel) {
+            const rect = canvas.getBoundingClientRect();
+            const posX = (e.clientX - rect.left) / rect.width;
+            const posY = (e.clientY - rect.top) / rect.height;
+            window.live2dModel.focus(posX, posY);
+          }
+        });
+
+        // 点击小人触发交互
+        canvas.addEventListener('click', () => {
+          if (window.live2dModel) {
+            window.live2dModel.motion('Tap');
+            showSpeech('小助理', '老铁好呀！我和大肥鱼一起守护直播间，点歌唠嗑打在公屏上哦！');
+          }
+        });
+
+        console.log('✅ [Live2D] Haru 模型加载成功！');
+      } catch (err) {
+        console.warn('⚠️ [Live2D] 加载失败:', err);
+      }
+    }
+
+    // 模式切换
+    const switchDisplayModeBtn = document.getElementById('switchDisplayModeBtn');
+    function applyDisplayMode(mode) {
+      document.body.classList.remove('mode-combo', 'mode-fish', 'mode-live2d');
+      document.body.classList.add('mode-' + mode);
+      if (mode === 'combo') {
+        switchDisplayModeBtn.innerHTML = '🎎 模式: 双模同台 (女孩+萌鱼)';
+        if (!window.live2dApp) initLive2D();
+      } else if (mode === 'fish') {
+        switchDisplayModeBtn.innerHTML = '🐟 模式: 呆萌大肥鱼';
+      } else if (mode === 'live2d') {
+        switchDisplayModeBtn.innerHTML = '👑 模式: 大肥鱼女孩独秀';
+        if (!window.live2dApp) initLive2D();
+      }
+    }
+
+    if (switchDisplayModeBtn) {
+      switchDisplayModeBtn.addEventListener('click', () => {
+        currentModeIndex = (currentModeIndex + 1) % displayModes.length;
+        applyDisplayMode(displayModes[currentModeIndex]);
+      });
+    }
+
+    // 页面加载完成后启动 Live2D
+    window.addEventListener('load', () => {
+      initLive2D();
+    });
+
+    // 3D 鼠标悬浮视差 (大肥鱼朝向鼠标)
+    
+
+    // 点击大肥鱼互动
+    const avatarFrame = document.getElementById('avatarFrame');
+    if (avatarFrame) {
+      avatarFrame.addEventListener('click', () => {
+        feedFish(10);
+        showEventToast('💖', '戳戳大肥鱼！体重 +10斤！');
+        showSpeech('大肥鱼', '哎呀！别乱戳，肉都被你戳结实了！赶紧给本鱼送点小鱼干！');
+      });
+    }
+
+    // 纯净推流模式 (按 H 键切换)
+    const hideUiBtn = document.getElementById('hideUiBtn');
+    function toggleCleanMode() {
+      document.body.classList.toggle('clean-mode');
+    }
+    if (hideUiBtn) hideUiBtn.addEventListener('click', toggleCleanMode);
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'h' || e.key === 'H') {
+        const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+        if (activeTag !== 'input' && activeTag !== 'textarea') {
+          toggleCleanMode();
+        }
+      }
+    });
+
+    // 实时数字时钟 (秒级更新，防平台误判录播)
+    function updateClock() {
+      const now = new Date();
+      const yr = now.getFullYear();
+      const mo = String(now.getMonth() + 1).padStart(2, '0');
+      const da = String(now.getDate()).padStart(2, '0');
+      const hr = String(now.getHours()).padStart(2, '0');
+      const mi = String(now.getMinutes()).padStart(2, '0');
+      const sc = String(now.getSeconds()).padStart(2, '0');
+      const str = `${yr}-${mo}-${da} ${hr}:${mi}:${sc}`;
+      const clockEl = document.getElementById('liveClockTime');
+      if (clockEl) clockEl.innerText = str;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // 实时高光通报浮窗
+    let toastTimeout = null;
+    function showEventToast(icon, text) {
+      const toast = document.getElementById('liveEventToast');
+      const iconEl = document.getElementById('eventToastIcon');
+      const textEl = document.getElementById('eventToastText');
+      if (!toast) return;
+      iconEl.innerText = icon;
+      textEl.innerText = text;
+      toast.classList.add('show');
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3500);
+    }
+
+    // 说话字幕与嘴型/身体律动
+    let speechTimer = null;
+    function showSpeech(speaker, text) {
+      const subtitle = document.getElementById('douyinSubtitle');
+      const subtitleText = document.getElementById('douyinSubtitleText');
+      const animeFrame = document.getElementById('avatarFrame');
+
+      if (subtitleText) subtitleText.innerText = text;
+      if (subtitle) {
+        subtitle.style.opacity = '1';
+        subtitle.style.transform = 'translateX(-50%) scale(1)';
+      }
+
+      // 大肥鱼高频蹦跳律动
+      if (animeFrame) animeFrame.classList.add('whale-talking');
+      const gFrame = document.getElementById('girlFrame');
+      if (gFrame) gFrame.classList.add('girl-talking');
+
+      // Live2D 对口型开合驱动
+      let mouthCycle = null;
+      if (window.live2dModel && window.live2dModel.internalModel) {
+        let open = true;
+        mouthCycle = setInterval(() => {
+          open = !open;
+          try {
+            window.live2dModel.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', open ? 0.9 : 0.0);
+          } catch(e) {}
+        }, 120);
+      }
+
+      if (speechTimer) clearTimeout(speechTimer);
+      const displayDuration = Math.max(4000, text.length * 300);
+      speechTimer = setTimeout(() => {
+        if (subtitle) {
+          subtitle.style.opacity = '0.7';
+        }
+        if (animeFrame) animeFrame.classList.remove('whale-talking');
+        const gFrame = document.getElementById('girlFrame');
+        if (gFrame) gFrame.classList.remove('girl-talking');
+        if (mouthCycle) {
+          clearInterval(mouthCycle);
+          try {
+            if (window.live2dModel && window.live2dModel.internalModel) {
+              window.live2dModel.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', 0);
+            }
+          } catch(e) {}
+        }
+      }, displayDuration);
+    }
+
+    // 体重与进化系统
+    function feedFish(lbs) {
+      currentWeight += lbs;
+      const pct = Math.min(100, Math.round((currentWeight / targetWeight) * 100));
+      const fill = document.getElementById('evoProgressFill');
+      const valText = document.getElementById('evoValText');
+      if (fill) fill.style.width = pct + '%';
+      if (valText) valText.innerText = `${currentWeight} / ${targetWeight} 斤 (${pct}%)`;
+
+      if (currentWeight >= targetWeight && currentLevel === 1) {
+        currentLevel = 2;
+        const badge = document.getElementById('evoLevelBadge');
+        const target = document.getElementById('evoTargetText');
+        if (badge) badge.innerText = 'Lv.2 傲娇暴食肥鱼';
+        if (target) target.innerText = '目标: 进化为【Lv.3 赛博深海霸主】';
+        showEventToast('🎉', '恭喜！大肥鱼进化为【Lv.2 傲娇暴食肥鱼】！');
+        showSpeech('大肥鱼', '芜湖起飞！本鱼终于进化啦！感谢老铁们的投喂，今晚全场消费本鱼买单！');
+      }
+    }
+
+    // 弹幕流水瀑布追加
+    function addDanmu(nickname, text, type = 'user') {
+      const container = document.getElementById('danmuStream');
+      if (!container) return;
+
+      const item = document.createElement('div');
+      item.className = 'danmu-item';
+
+      let badgeHtml = '<span class="danmu-badge badge-user">老铁</span>';
+      if (type === 'vip') badgeHtml = '<span class="danmu-badge badge-vip">榜一</span>';
+      else if (type === 'join') badgeHtml = '<span class="danmu-badge badge-join">进房</span>';
+      else if (type === 'gift') badgeHtml = '<span class="danmu-badge badge-gift">礼物</span>';
+
+      item.innerHTML = `
+        ${badgeHtml}
+        <span class="danmu-name">${escapeHtml(nickname)}:</span>
+        <span class="danmu-text">${escapeHtml(text)}</span>
+      `;
+
+      container.appendChild(item);
+      while (container.children.length > 7) {
+        container.removeChild(container.firstChild);
+      }
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // =========================================================================
+    // 点歌系统：排队、本地优先、完整播放完再切歌
+    // =========================================================================
+    const audioPlayer = document.getElementById('audioPlayer');
+
+    // 播放下一首
+    function playNextSong() {
+      if (songQueue.length === 0) {
+        isPlayingSong = false;
+        currentPlayingSong = null;
+        updateQueueUI();
+        const disc = document.getElementById('vinylDisc');
+        if (disc) disc.style.animationPlayState = 'paused';
+        document.getElementById('nowPlayingSongName').innerText = '治愈深海纯音乐';
+        document.getElementById('nowPlayingRequester').innerText = '大肥鱼精选电台';
+        document.getElementById('currentSongTitle').innerText = '🎵 治愈深海纯音乐';
+        return;
+      }
+
+      isPlayingSong = true;
+      currentPlayingSong = songQueue.shift();
+      updateQueueUI();
+
+      audioPlayer.src = currentPlayingSong.url;
+      audioPlayer.play().then(() => {
+        const disc = document.getElementById('vinylDisc');
+        if (disc) disc.style.animationPlayState = 'running';
+        document.getElementById('nowPlayingSongName').innerText = currentPlayingSong.title;
+        document.getElementById('nowPlayingRequester').innerText = `由【${currentPlayingSong.user}】点播`;
+        document.getElementById('currentSongTitle').innerText = `🎵 ${currentPlayingSong.title}`;
+        showSpeech('大肥鱼', `安排！正在播放【${currentPlayingSong.user}】点的《${currentPlayingSong.title}》，老铁们好好欣赏！`);
+      }).catch(err => {
+        console.warn('播放失败，自动播放下一首:', err);
+        playNextSong();
+      });
+    }
+
+    // 严格保障：当前歌曲自然播放完后才切下一首
+    audioPlayer.addEventListener('ended', () => {
+      console.log('当前歌曲播放完毕，准备切下一首');
+      playNextSong();
+    });
+
+    // 刷新排队列表 UI
+    function updateQueueUI() {
+      const badge = document.getElementById('queueCountBadge');
+      const listContainer = document.getElementById('queueList');
+      if (badge) badge.innerText = `排队 ${songQueue.length} 首`;
+
+      if (!listContainer) return;
+      if (songQueue.length === 0) {
+        listContainer.innerHTML = '<div class="queue-empty-tip">💡 公屏发送【点歌 歌名】即可免费排队点播！</div>';
+        return;
+      }
+
+      let html = '';
+      songQueue.forEach((s, idx) => {
+        html += `
+          <div class="queue-item">
+            <span class="queue-item-name">${idx + 1}. ${escapeHtml(s.title)}</span>
+            <span class="queue-item-user">点歌: ${escapeHtml(s.user)}</span>
+          </div>
+        `;
+      });
+      listContainer.innerHTML = html;
+    }
+
+    // 点歌接口
+    async function requestSong(songName, userName) {
+      showEventToast('🎵', `收到【${userName}】点歌: 《${songName}》`);
+      try {
+        const res = await fetch(`/api/search_song?q=${encodeURIComponent(songName)}`);
+        const data = await res.json();
+        if (data.ok && data.url) {
+          const songItem = {
+            title: data.title || songName,
+            url: data.url,
+            user: userName,
+            source: data.source || 'local'
+          };
+
+          if (!isPlayingSong) {
+            songQueue.push(songItem);
+            playNextSong();
+          } else {
+            songQueue.push(songItem);
+            updateQueueUI();
+            showSpeech('大肥鱼', `收到【${userName}】点播的《${songItem.title}》！已加入排队第 ${songQueue.length} 位！`);
+          }
+        } else {
+          showSpeech('大肥鱼', `哎呀【${userName}】，曲库里没搜到《${songName}》，换首杰伦或流行的经典金曲呗！`);
+        }
+      } catch (err) {
+        console.error('点歌请求错误:', err);
+      }
+    }
+
+    // 切下一首
+    const skipSongBtn = document.getElementById('skipSongBtn');
+    if (skipSongBtn) {
+      skipSongBtn.addEventListener('click', () => {
+        if (isPlayingSong || songQueue.length > 0) {
+          showEventToast('⏭️', '房管已切歌');
+          playNextSong();
+        } else {
+          showEventToast('ℹ️', '当前排队列表为空');
+        }
+      });
+    }
+
+    // 投喂按钮
+    const feedFishBtn = document.getElementById('feedFishBtn');
+    if (feedFishBtn) {
+      feedFishBtn.addEventListener('click', () => {
+        feedFish(10);
+        showEventToast('🐟', '投喂成功！体重 +10斤！');
+      });
+    }
+
+    // 播报玩法按钮
+    const broadcastRuleBtn = document.getElementById('broadcastRuleBtn');
+    if (broadcastRuleBtn) {
+      broadcastRuleBtn.addEventListener('click', () => {
+        showSpeech('大肥鱼', '欢迎来到大肥鱼 AI 直播间！公屏打【点歌+歌名】免费点播，打【猜歌】开启盲盒挑战，双击屏幕为主播疯狂点赞吧！');
+      });
+    }
+
+    // 听前奏猜歌系统
+    const triggerGuessBtn = document.getElementById('triggerGuessBtn');
+    async function startGuessSong() {
+      const banner = document.getElementById('guessSongBanner');
+      const timerText = document.getElementById('guessTimerText');
+      const hintText = document.getElementById('guessHintText');
+      const progressInner = document.getElementById('guessProgressInner');
+
+      try {
+        const res = await fetch('/api/get_guess_song');
+        const data = await res.json();
+        if (data.ok) {
+          currentGuessSong = data;
+          banner.style.display = 'block';
+          hintText.innerText = `提示: ${data.hint || '一首红遍大江南北的热门金曲'}`;
+          showSpeech('大肥鱼', '【听前奏猜歌盲盒】正式开启！20秒内公屏第1个打出歌名的老铁直接加冕状元！');
+
+          audioPlayer.src = data.url;
+          audioPlayer.play().catch(() => {});
+
+          let timeLeft = 20;
+          progressInner.style.transition = 'width 20s linear';
+          progressInner.style.width = '0%';
+
+          if (guessTimer) clearInterval(guessTimer);
+          guessTimer = setInterval(() => {
+            timeLeft--;
+            timerText.innerText = `⏳ ${timeLeft}s`;
+            if (timeLeft <= 0) {
+              clearInterval(guessTimer);
+              banner.style.display = 'none';
+              audioPlayer.pause();
+              showSpeech('大肥鱼', `时间到！遗憾无人猜对，正确歌名是《${data.title}》！稍后继续挑战！`);
+            }
+          }, 1000);
+        }
+      } catch (e) {
+        console.error('猜歌发起失败:', e);
+      }
+    }
+    if (triggerGuessBtn) triggerGuessBtn.addEventListener('click', startGuessSong);
+
+    // =========================================================================
+    // WebSocket 实时弹幕接收与控制
+    // =========================================================================
+    function connectWS() {
+      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const url = `${proto}//${window.location.host}/ws`;
+      ws = new WebSocket(url);
+
+      ws.onopen = () => {
+        console.log('✅ WebSocket 已连接到直播中枢');
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          handleLiveEvent(data);
+        } catch (e) {
+          console.error('解析 WS 消息失败:', e);
+        }
+      };
+
+      ws.onclose = () => {
+        console.warn('⚠️ WebSocket 断开，3秒后重连...');
+        setTimeout(connectWS, 3000);
+      };
+    }
+
+    function handleLiveEvent(data) {
+      if (!data) return;
+
+      // 弹幕事件
+      if (data.type === 'danmu') {
+        addDanmu(data.user, data.text);
+
+        // 点歌指令匹配
+        if (data.text.startsWith('点歌') || data.text.startsWith('我想听')) {
+          const songName = data.text.replace(/^(点歌|我想听)\s*/, '').trim();
+          if (songName) requestSong(songName, data.user);
+        } else if (data.text === '切歌') {
+          playNextSong();
+        } else if (data.text === '投喂') {
+          feedFish(5);
+          showEventToast('🐟', `${data.user} 投喂小鱼干，体重 +5斤！`);
+        } else if (data.text === '猜歌') {
+          startGuessSong();
+        } else if (data.text.includes('跳舞') || data.text.includes('跳个舞') || data.text.includes('极乐净土')) {
+          startDance(25);
+        }
+
+        // 猜歌核对
+        if (currentGuessSong && data.text.includes(currentGuessSong.title)) {
+          clearInterval(guessTimer);
+          document.getElementById('guessSongBanner').style.display = 'none';
+          showEventToast('👑', `恭喜 ${data.user} 率先猜中《${currentGuessSong.title}》！加冕状元！`);
+          showSpeech('大肥鱼', `太强啦！恭喜【${data.user}】神速猜对《${currentGuessSong.title}》！荣获本场猜歌状元！`);
+          currentGuessSong = null;
+        }
+      }
+      // AI 回复事件
+      else if (data.type === 'ai_reply') {
+        showSpeech('大肥鱼', data.text);
+        if (data.audio_url) {
+          const snd = new Audio(data.audio_url);
+          snd.play().catch(() => {});
+        }
+      }
+      // 进房事件
+      else if (data.type === 'join') {
+        addDanmu(data.user, '进入了直播间', 'join');
+        showEventToast('👋', `欢迎 ${data.user} 莅临大肥鱼直播间！`);
+      }
+      // 点赞事件
+      else if (data.type === 'like') {
+        feedFish(1);
+        showEventToast('💖', `${data.user} 为大肥鱼点赞！`);
+      }
+      // 送礼事件
+      else if (data.type === 'gift') {
+        feedFish(50);
+        startDance(20, '老板打赏专属庆典热舞');
+        addDanmu(data.user, `送出 ${data.gift_name} x${data.count || 1}`, 'gift');
+        showEventToast('🎁', `感谢 ${data.user} 送出的豪礼！`);
+        // 榜一更新
+        document.getElementById('throneUser').innerText = data.user;
+        document.getElementById('throneScore').innerText = `贡献 ${data.count * 10} 鱼干`;
+      }
+    }
+
+    // 底部模拟弹幕发送
+    const msgInput = document.getElementById('msgInput');
+    const sendBtn = document.getElementById('sendBtn');
+    function sendLocalMsg() {
+      const text = msgInput.value.trim();
+      if (!text) return;
+      msgInput.value = '';
+
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'danmu', user: '主播测试', text: text }));
+      } else {
+        handleLiveEvent({ type: 'danmu', user: '主播测试', text: text });
+      }
+    }
+    if (sendBtn) sendBtn.addEventListener('click', sendLocalMsg);
+    if (msgInput) {
+      msgInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') sendLocalMsg();
+      });
+    }
+
+    
+    // 大肥鱼女孩点击互动
+    const girlFrame = document.getElementById('girlFrame');
+    if (girlFrame) {
+      girlFrame.addEventListener('click', () => {
+        showEventToast('✨', '与大肥鱼女孩互动！');
+        showSpeech('大肥鱼女孩', '嗨老铁！我是大肥鱼本鱼的好搭档~ 喜欢我们的直播记得点赞关注哦！');
+      });
+    }
+
+    // 鼠标视差驱动大肥鱼女孩
+    
+    // 鼠标 3D 空间动态透视追踪 (大肥鱼与 3D 女孩各自分层响应)
+    window.addEventListener('mousemove', (e) => {
+      const x = (e.clientX / window.innerWidth - 0.5) * 2;
+      const y = (e.clientY / window.innerHeight - 0.5) * 2;
+
+      // 3D 女孩视角倾角跟随
+      const girlImg = document.getElementById('girlImage');
+      if (girlImg) {
+        const tiltY = x * 16;
+        const tiltX = -y * 12;
+        girlImg.style.transform = `perspective(800px) rotateY(${tiltY}deg) rotateX(${tiltX}deg) translateZ(15px)`;
+      }
+
+      // 大肥鱼视角跟随
+      const fishImg = document.getElementById('animeImage');
+      if (fishImg) {
+        const fishRotY = x * 18;
+        const fishRotX = -y * 14;
+        fishImg.style.transform = `perspective(800px) rotateY(${fishRotY}deg) rotateX(${fishRotX}deg) translateZ(25px)`;
+      }
+    });
+
+
+    
+    // =========================================================================
+    // 💃 3D 舞蹈引擎控制器 (极乐净土 / 动感热舞)
+    // =========================================================================
+    let isDancing = false;
+    let danceTimer = null;
+    const danceBtn = document.getElementById('danceBtn');
+    const stagePartyLights = document.getElementById('stagePartyLights');
+
+    function startDance(durationSec = 25, songTitle = "极乐净土 (Gokuraku Jodo)") {
+      if (isDancing) {
+        showEventToast('💃', '已经在热舞中啦！跟上节奏嗨起来！');
+        return;
+      }
+      isDancing = true;
+      if (danceBtn) {
+        danceBtn.innerText = '✨ 热舞进行中...';
+        danceBtn.style.background = 'linear-gradient(135deg, #f43f5e, #be123c)';
+      }
+      if (stagePartyLights) stagePartyLights.classList.add('active');
+
+      const girlF = document.getElementById('girlFrame');
+      const fishF = document.getElementById('avatarFrame');
+      if (girlF) girlF.classList.add('girl-dancing');
+      if (fishF) fishF.classList.add('fish-dancing');
+      if (window.play3DCharacterDance) {
+        window.play3DCharacterDance();
+      }
+
+      showEventToast('💃', `大肥鱼女孩开启 3D 热舞《${songTitle}》！全场嗨起来！`);
+      showSpeech('大肥鱼女孩', `音乐响起来！老铁们掌声在哪里？极乐净土安排！公屏荧光棒挥起来！`);
+
+      // 播放动感热舞伴奏 (若有本地/在线热舞音频)
+      const danceAudioUrl = "https://music.163.com/song/media/outer/url?id=426881487.mp3"; // 经典极乐净土原曲
+      audioPlayer.src = danceAudioUrl;
+      audioPlayer.play().catch(() => {
+        console.log("需要用户点击屏幕触发音频播放");
+      });
+
+      const disc = document.getElementById('vinylDisc');
+      if (disc) {
+        disc.style.animationDuration = '1.8s'; // 唱片加速旋转
+        disc.style.animationPlayState = 'running';
+      }
+      document.getElementById('currentSongTitle').innerText = `🔥 正在热舞: ${songTitle}`;
+      document.getElementById('nowPlayingSongName').innerText = songTitle;
+
+      if (danceTimer) clearTimeout(danceTimer);
+      danceTimer = setTimeout(() => {
+        stopDance();
+      }, durationSec * 1000);
+    }
+
+    function stopDance() {
+      isDancing = false;
+      if (danceBtn) {
+        danceBtn.innerText = '💃 极乐净土(跳舞)';
+        danceBtn.style.background = 'linear-gradient(135deg, #ec4899, #f43f5e)';
+      }
+      if (stagePartyLights) stagePartyLights.classList.remove('active');
+
+      const girlF = document.getElementById('girlFrame');
+      const fishF = document.getElementById('avatarFrame');
+      if (girlF) girlF.classList.remove('girl-dancing');
+      if (fishF) fishF.classList.remove('fish-dancing');
+      if (window.stop3DCharacterDance) {
+        window.stop3DCharacterDance();
+      }
+
+      const disc = document.getElementById('vinylDisc');
+      if (disc) disc.style.animationDuration = '6s';
+
+      showSpeech('大肥鱼女孩', '呼~ 跳完啦！这首舞跳得本姑娘心花怒放，老铁们喜欢的话随手点亮小红心哦！');
+    }
+
+    if (danceBtn) {
+      danceBtn.addEventListener('click', () => {
+        unlockAudio();
+        startDance(30);
+      });
+    }
+
+    // 启动 3D 骨骼动力学舞台
+    function tryInit3D() {
+      if (window.init3DStage) {
+        window.init3DStage();
+      } else {
+        setTimeout(tryInit3D, 200);
+      }
+    }
+    tryInit3D();
+
+    window.on3DModelReady = function() {
+      const girlF = document.getElementById('girlFrame');
+      if (girlF) girlF.classList.add('mode-3d-active');
+      console.log('✅ 3D 骨骼真人动力学跳舞系统就绪！已自动隐藏静态贴图');
+    };
+
+    // 启动 WebSocket
+    connectWS();
+  </script>
+</body>
+</html>

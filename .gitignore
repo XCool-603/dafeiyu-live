@@ -1,0 +1,19 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Sensitive configuration (contains private API keys)
+config.json
+
+# Live streaming generated TTS audio cache
+audio_cache/speech_*.mp3
+audio_cache/*.tmp
+
+# Temporary files
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
