@@ -124,8 +124,22 @@ GUESS_SONG_BANK = [
 ]
 
 def load_config():
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+    if not os.path.exists(CONFIG_PATH):
+        example_p = BASE_DIR / "config.example.json"
+        if example_p.exists():
+            import shutil
+            shutil.copy(example_p, CONFIG_PATH)
+    try:
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"[配置警告] 加载 config.json 异常: {e}，使用默认配置")
+        return {
+            "api_key": "YOUR_API_KEY",
+            "base_url": "https://api.deepseek.com",
+            "model": "deepseek-chat",
+            "port": 8765
+        }
 
 config = load_config()
 last_interaction_time = time.time()
