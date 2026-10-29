@@ -1153,6 +1153,9 @@
       <button class="btn-action btn-purple" id="switchDisplayModeBtn" title="切换展示模式">
         🎭 模式: 双模同台
       </button>
+      <button class="btn-action" id="switchAvatarEngineBtn" title="一键切换主播形态 (3D骨骼动捕舞娘 / 原画大肥鱼双马尾妹)" style="background: linear-gradient(135deg, #0284c7, #38bdf8); color: #fff; border: 1px solid #7dd3fc; margin-left: 8px;">
+        ✨ 形态: 3D动力学舞娘
+      </button>
       <div class="audio-unlock-badge" id="audioUnlockTip" onclick="unlockAudio()" title="点击开启声音与伴奏">
         🔊 激活音频
       </div>
@@ -1964,11 +1967,12 @@
 
       const girlF = document.getElementById('girlFrame');
       const fishF = document.getElementById('avatarFrame');
-      if (girlF) girlF.classList.add('girl-dancing');
-      if (fishF) fishF.classList.add('fish-dancing');
-      if (window.play3DCharacterDance) {
+      if (avatarEngineMode === '3d' && window.play3DCharacterDance) {
         window.play3DCharacterDance();
+      } else {
+        if (girlF) girlF.classList.add('girl-dancing');
       }
+      if (fishF) fishF.classList.add('fish-dancing');
 
       showEventToast('💃', `大肥鱼女孩开启 3D 热舞《${songTitle}》！全场嗨起来！`);
       showSpeech('大肥鱼女孩', `音乐响起来！老铁们掌声在哪里？极乐净土安排！公屏荧光棒挥起来！`);
@@ -2023,6 +2027,45 @@
       });
     }
 
+    // 主播形象呈现形态切换系统 (3D 骨骼动力学舞娘 / 经典原画双马尾大肥鱼妹)
+    let avatarEngineMode = localStorage.getItem('avatar_engine_mode') || 'classic'; // '3d' | 'classic'
+    const switchAvatarBtn = document.getElementById('switchAvatarEngineBtn');
+
+    function applyAvatarEngineMode(mode) {
+      avatarEngineMode = mode;
+      localStorage.setItem('avatar_engine_mode', mode);
+      const girlF = document.getElementById('girlFrame');
+      const canvas3D = document.getElementById('threeStageCanvas');
+      const girlImg = document.getElementById('girlImage');
+
+      if (mode === '3d') {
+        if (switchAvatarBtn) {
+          switchAvatarBtn.innerHTML = '✨ 形态: 3D动力学舞娘';
+          switchAvatarBtn.style.background = 'linear-gradient(135deg, #0284c7, #38bdf8)';
+        }
+        if (canvas3D) canvas3D.style.display = 'block';
+        if (girlF) girlF.classList.add('mode-3d-active');
+        if (girlImg) girlImg.style.display = 'none';
+        showEventToast('💃', '已切换为主播【3D 真实骨骼舞娘】形态！');
+      } else {
+        if (switchAvatarBtn) {
+          switchAvatarBtn.innerHTML = '🎨 形态: 原画双马尾大肥鱼妹';
+          switchAvatarBtn.style.background = 'linear-gradient(135deg, #8b5cf6, #ec4899)';
+        }
+        if (canvas3D) canvas3D.style.display = 'none';
+        if (girlF) girlF.classList.remove('mode-3d-active');
+        if (girlImg) girlImg.style.display = 'block';
+        showEventToast('🐟', '已切换为主播【经典原画双马尾大肥鱼】形态！');
+      }
+    }
+
+    if (switchAvatarBtn) {
+      switchAvatarBtn.addEventListener('click', () => {
+        const nextMode = avatarEngineMode === '3d' ? 'classic' : '3d';
+        applyAvatarEngineMode(nextMode);
+      });
+    }
+
     // 启动 3D 骨骼动力学舞台
     function tryInit3D() {
       if (window.init3DStage) {
@@ -2034,9 +2077,15 @@
     tryInit3D();
 
     window.on3DModelReady = function() {
-      const girlF = document.getElementById('girlFrame');
-      if (girlF) girlF.classList.add('mode-3d-active');
-      console.log('✅ 3D 骨骼真人动力学跳舞系统就绪！已自动隐藏静态贴图');
+      if (avatarEngineMode === '3d') {
+        const girlF = document.getElementById('girlFrame');
+        if (girlF) girlF.classList.add('mode-3d-active');
+        const girlImg = document.getElementById('girlImage');
+        if (girlImg) girlImg.style.display = 'none';
+      } else {
+        applyAvatarEngineMode('classic');
+      }
+      console.log('✅ 3D 骨骼真人动力学跳舞系统就绪！');
     };
 
     // 启动 WebSocket

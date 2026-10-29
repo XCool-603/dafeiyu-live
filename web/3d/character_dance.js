@@ -227,15 +227,35 @@ class AnimeVTuberStage {
       this.model.scale.set(1.32, 1.32, 1.32);
       this.model.position.set(0, -0.45, 0);
 
-      // 获取关键骨骼
+      // 赋予大肥鱼专属二次元蓝鲸娘定制配色 (经典天青蓝发 + 水润青蓝明眸 + 水手风蓝白连身裙)
       this.model.traverse((child) => {
-        if (child.isMesh) {
+        if (child.isMesh && child.material) {
           child.castShadow = false;
           child.receiveShadow = false;
-          if (child.material) {
-            child.material.depthWrite = true;
-            if (child.material.map) child.material.map.colorSpace = THREE.SRGBColorSpace;
+          const mat = child.material;
+          const name = (mat.name || '').toUpperCase();
+
+          // 1. 经典大肥鱼天青色蓝鲸发色 (告别泛白女仆，高度还原大肥鱼双马尾蓝发)
+          if (name.includes('HAIR')) {
+            mat.color.set('#38bdf8'); // 标志性天青蓝
+            if (mat.emissive) mat.emissive.set('#0ea5e9').multiplyScalar(0.15);
           }
+          // 2. 灵动水润青蓝明眸
+          else if (name.includes('EYE') && !name.includes('WHITE')) {
+            mat.color.set('#00f0ff');
+            if (mat.emissive) mat.emissive.set('#00b4d8').multiplyScalar(0.25);
+          }
+          // 3. 水手风蓝白搭配连身裙 (经典大肥鱼水手蓝鲸风)
+          else if (name.includes('ONEPIECE_00') || name.includes('CLOTH_02')) {
+            mat.color.set('#f8fafc'); // 纯白荷叶边围裙
+          } else if (name.includes('TOPS') || name.includes('CLOTH_01') || name.includes('ONEPIECE_01')) {
+            mat.color.set('#0284c7'); // 深海鲸鱼蓝水手主衣
+          } else if (name.includes('SHOES')) {
+            mat.color.set('#0f172a'); // 酷黑靴子
+          }
+
+          mat.depthWrite = true;
+          if (mat.map) mat.map.colorSpace = THREE.SRGBColorSpace;
         }
         if (child.isBone) {
           if (child.name === 'J_Bip_C_Head') this.headBone = child;
