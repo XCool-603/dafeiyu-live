@@ -2066,6 +2066,9 @@
       });
     }
 
+    // 立即执行一次初始化形态设定 (确保默认经典双马尾大肥鱼妹 100% 立即展示)
+    applyAvatarEngineMode(avatarEngineMode);
+
     // 启动 3D 骨骼动力学舞台
     function tryInit3D() {
       if (window.init3DStage) {
