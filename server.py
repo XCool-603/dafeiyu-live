@@ -853,6 +853,10 @@ async def cors_middleware(request, handler):
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
     response.headers['Access-Control-Allow-Headers'] = '*'
+    # 对图片、音频和静态资源提供客户端持久缓存加速与连接复用，避免局域网丢包加载失败
+    path = request.path.lower()
+    if any(path.endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.glb', '.mp3', '.wav', '.js', '.css', '.moc3']):
+        response.headers['Cache-Control'] = 'public, max-age=604800, stale-while-revalidate=86400'
     return response
 
 def create_app():
@@ -949,4 +953,9 @@ if __name__ == "__main__":
     app = create_app()
     app.on_startup.append(start_background_tasks)
     app.on_cleanup.append(cleanup_background_tasks)
-    web.run_app(app, host="0.0.0.0", port=port, print=None)
+    try:
+        web.run_app(app, host="0.0.0.0", port=port, print=None)
+    except Exception as e:
+        print(f"[FATAL SERVER ERROR] {e}", flush=True)
+        import traceback
+        traceback.print_exc()

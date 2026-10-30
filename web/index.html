@@ -5,10 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>大肥鱼 AI 互动无人直播间</title>
 
-  <!-- 引入 Live2D Cubism 4 & PixiJS 官方运行库 -->
-  <script src="/live2d_lib/live2dcubismcore.min.js"></script>
-  <script src="/live2d_lib/pixi.min.js"></script>
-  <script src="/live2d_lib/cubism4.min.js"></script>
+  <!-- 优先预加载核心核心形象图片与背景，避免局域网和移动端弱网出现加载白屏或断续 -->
+  <link rel="preload" as="image" href="/bg_aquarium.jpg" />
+  <link rel="preload" as="image" href="/dafeiyu_cute_fish.png" />
+  <link rel="preload" as="image" href="/dafeiyu_girl_3d_transparent.png" />
+
+  <!-- 引入 Live2D Cubism 4 & PixiJS 官方运行库 (使用 defer 避免阻塞首屏图片渲染) -->
+  <script defer src="/live2d_lib/live2dcubismcore.min.js"></script>
+  <script defer src="/live2d_lib/pixi.min.js"></script>
+  <script defer src="/live2d_lib/cubism4.min.js"></script>
 
   <!-- 引入 3D WebGL 骨骼动力学跳舞引擎 (Three.js & GLTF 动作加载器) -->
   <script type="importmap">
@@ -1319,7 +1324,7 @@
     <!-- 9.1 大肥鱼 3D 萌宠 (高能游曳+说话律动+鼠标跟随) -->
     <div class="avatar-parallax-wrapper" id="avatarParallax">
       <div class="anime-avatar-frame" id="avatarFrame" title="点击戳戳大肥鱼！">
-        <img id="animeImage" src="/dafeiyu_cute_fish.png" alt="标志性大肥鱼" />
+        <img id="animeImage" src="/dafeiyu_cute_fish.png" alt="标志性大肥鱼" onerror="handleImageLoadError(this, '/dafeiyu_cute_fish.png')" />
       </div>
     </div>
 
@@ -1328,7 +1333,7 @@
     <div id="live2dWrapper" class="girl-vtuber-wrapper" title="点击与大肥鱼女孩互动">
       <div class="girl-vtuber-frame" id="girlFrame">
         <canvas id="threeStageCanvas"></canvas>
-        <img id="girlImage" src="/dafeiyu_girl_3d_transparent.png" alt="大肥鱼女孩" />
+        <img id="girlImage" src="/dafeiyu_girl_3d_transparent.png" alt="大肥鱼女孩" onerror="handleImageLoadError(this, '/dafeiyu_girl_3d_transparent.png')" />
         <div class="girl-wave-hand" id="girlWaveHand"></div>
       </div>
     </div>
@@ -1354,6 +1359,21 @@
        12. 前端核心交互逻辑
        ========================================================================= -->
   <script>
+    // 图片断网与加载失败极速毫秒级自动重试机制
+    function handleImageLoadError(imgEl, originalSrc) {
+      const retryCount = parseInt(imgEl.dataset.retry || '0');
+      if (retryCount < 5) {
+        imgEl.dataset.retry = retryCount + 1;
+        const delay = Math.min(1000 * Math.pow(1.5, retryCount), 4000);
+        console.warn(`[图片保护] ${originalSrc} 加载中断，正在进行第 ${retryCount + 1} 次毫秒级重连恢复...`);
+        setTimeout(() => {
+          imgEl.src = originalSrc + '?retry=' + Date.now();
+        }, delay);
+      } else {
+        console.error(`[图片保护] ${originalSrc} 连续5次重试异常，尝试使用备选缓存资源`);
+      }
+    }
+
     let ws = null;
     let audioUnlocked = false;
     let currentWeight = 180;
