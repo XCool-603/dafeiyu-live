@@ -120,10 +120,10 @@ class AnimeVTuberStage {
     // 1. Scene
     this.scene = new THREE.Scene();
 
-    // 2. Camera (framed on upper-to-full body anime character)
-    this.camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 100);
-    this.camera.position.set(0, 0.82, 3.45);
-    this.camera.lookAt(0, 0.70, 0);
+    // 2. Camera: 黄金全身机位与镜头视角，从头顶呆毛到脚尖鞋履全景尽收眼底
+    this.camera = new THREE.PerspectiveCamera(28, width / height, 0.1, 100);
+    this.camera.position.set(0, 0.35, 4.35);
+    this.camera.lookAt(0, 0.32, 0);
 
     // 3. Renderer with transparent background
     this.renderer = new THREE.WebGLRenderer({
@@ -223,9 +223,9 @@ class AnimeVTuberStage {
       const charGltf = await loader.loadAsync('/3d/kawaii22.glb');
       this.model = charGltf.scene;
 
-      // 缩放并居中定位
-      this.model.scale.set(1.32, 1.32, 1.32);
-      this.model.position.set(0, -0.45, 0);
+      // 缩放并居中定位：完美全身展示，不截断头顶与腿脚
+      this.model.scale.set(1.02, 1.02, 1.02);
+      this.model.position.set(0, -0.52, 0);
 
       // 赋予大肥鱼专属二次元蓝鲸娘定制配色 (经典天青蓝发 + 水润青蓝明眸 + 水手风蓝白连身裙)
       this.model.traverse((child) => {
@@ -333,7 +333,7 @@ class AnimeVTuberStage {
     if (this.model && !this.isDancing) {
       // 呼吸与身体微浮动
       const breath = Math.sin(elapsedTime * 2.2) * 0.007;
-      this.model.position.y = -0.45 + breath;
+      this.model.position.y = -0.52 + breath;
 
       // 手臂微幅随呼吸摇曳
       if (this.leftUpperArm) {
