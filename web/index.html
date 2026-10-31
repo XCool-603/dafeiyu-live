@@ -2043,12 +2043,15 @@
     if (danceBtn) {
       danceBtn.addEventListener('click', () => {
         unlockAudio();
+        if (avatarEngineMode !== '3d') {
+          applyAvatarEngineMode('3d');
+        }
         startDance(30);
       });
     }
 
     // 主播形象呈现形态切换系统 (3D 骨骼动力学舞娘 / 经典原画双马尾大肥鱼妹)
-    let avatarEngineMode = localStorage.getItem('avatar_engine_mode') || 'classic'; // '3d' | 'classic'
+    let avatarEngineMode = localStorage.getItem('avatar_engine_mode') || '3d'; // 默认开启 3D 动力学舞娘形态
     const switchAvatarBtn = document.getElementById('switchAvatarEngineBtn');
 
     function applyAvatarEngineMode(mode) {
