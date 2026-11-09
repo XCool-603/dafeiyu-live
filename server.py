@@ -844,6 +844,32 @@ async def handle_feed_fish(request):
     })
     return web.json_response({"status": "ok", "state": evolution_state})
 
+
+async def handle_search_song(request):
+    q = request.query.get("q", "").strip()
+    song = await search_song_async(q)
+    if song and song.get("url"):
+        return web.json_response({
+            "ok": True,
+            "title": song.get("name"),
+            "artist": song.get("artist"),
+            "url": song.get("url"),
+            "source": "local" if song.get("is_local") else "muse"
+        })
+    return web.json_response({"ok": False, "message": "未找到歌曲"})
+
+async def handle_get_guess_song(request):
+    picked = random.choice(GUESS_SONG_BANK)
+    s_info = await search_song_async(picked["name"])
+    audio_url = s_info["url"] if s_info else ""
+    return web.json_response({
+        "ok": True,
+        "title": picked["name"],
+        "artist": picked["artist"],
+        "hint": f"{len(picked['name'])}个字，{picked['artist']}经典金曲",
+        "url": audio_url
+    })
+
 async def handle_favicon(request):
     return web.Response(status=204)
 
@@ -868,6 +894,8 @@ def create_app():
     app.router.add_post("/api/config", handle_post_config)
     app.router.add_get("/api/songs", handle_get_songs)
     app.router.add_get("/api/search_muse", handle_search_muse)
+    app.router.add_get("/api/search_song", handle_search_song)
+    app.router.add_get("/api/get_guess_song", handle_get_guess_song)
     app.router.add_post("/api/trigger_rule", handle_trigger_rule)
     app.router.add_get("/api/room_status", handle_get_room_status)
     app.router.add_post("/api/start_guess", handle_start_guess)

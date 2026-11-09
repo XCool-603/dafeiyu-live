@@ -1393,19 +1393,96 @@
     let displayModes = ['combo', 'fish', 'live2d']; // combo: 双模, fish: 纯鱼, live2d: 纯小人
     let currentModeIndex = 0;
 
-    // 音频初始化
+    // =========================================================================
+    // 优质音频引擎：支持浏览器交互自解锁、TTS主播说话自动音乐压低(Ducking)与本地高保真曲库
+    // =========================================================================
+    let ttsQueue = [];
+    let isPlayingTts = false;
+    let ttsAudio = new Audio();
+
+    function playDefaultMusic() {
+      if (isPlayingSong) return;
+      const defaultSong = {
+        title: '晴天',
+        artist: '周杰伦',
+        url: '/local_music/%E6%99%B4%E5%A4%A9.mp3',
+        user: '大肥鱼精选电台'
+      };
+      const audioPlayer = document.getElementById('audioPlayer');
+      if (!audioPlayer) return;
+      audioPlayer.src = defaultSong.url;
+      audioPlayer.volume = 0.85;
+      audioPlayer.play().then(() => {
+        isPlayingSong = true;
+        currentPlayingSong = defaultSong;
+        const disc = document.getElementById('vinylDisc');
+        if (disc) disc.style.animationPlayState = 'running';
+        document.getElementById('nowPlayingSongName').innerText = defaultSong.title;
+        document.getElementById('nowPlayingRequester').innerText = defaultSong.user;
+        document.getElementById('currentSongTitle').innerText = `🎵 ${defaultSong.title}`;
+      }).catch(err => {
+        console.warn('默认背景音乐等待用户点击页面激活:', err);
+      });
+    }
+
     function unlockAudio() {
-      if (audioUnlocked) return;
       audioUnlocked = true;
-      const audio = document.getElementById('audioPlayer');
-      const bgm = document.getElementById('bgmPlayer');
-      audio.play().then(() => audio.pause()).catch(() => {});
-      bgm.play().then(() => bgm.pause()).catch(() => {});
       const tip = document.getElementById('audioUnlockTip');
       if (tip) tip.style.display = 'none';
-      console.log('✅ 音频上下文已解锁');
+
+      const audioPlayer = document.getElementById('audioPlayer');
+      if (audioPlayer && audioPlayer.src && audioPlayer.paused) {
+        audioPlayer.play().catch(() => {});
+      } else if (!isPlayingSong) {
+        playDefaultMusic();
+      }
+      console.log('✅ 音频引擎已就绪并激活');
     }
-    document.addEventListener('click', unlockAudio, { once: true });
+    document.addEventListener('click', unlockAudio);
+    document.addEventListener('touchstart', unlockAudio);
+    document.addEventListener('keydown', unlockAudio);
+
+    function playTtsAudio(audioUrl) {
+      if (!audioUrl) return;
+      ttsQueue.push(audioUrl);
+      processTtsQueue();
+    }
+
+    function processTtsQueue() {
+      if (isPlayingTts || ttsQueue.length === 0) return;
+      isPlayingTts = true;
+      const url = ttsQueue.shift();
+
+      ttsAudio.src = url;
+      ttsAudio.volume = 1.0;
+
+      // 主播说话，背景音乐自然降低音量 (Ducking)，凸显甜美东北口音
+      const audioPlayer = document.getElementById('audioPlayer');
+      if (audioPlayer && !audioPlayer.paused) {
+        audioPlayer.volume = 0.22;
+      }
+
+      ttsAudio.play().then(() => {
+        audioUnlocked = true;
+        const tip = document.getElementById('audioUnlockTip');
+        if (tip) tip.style.display = 'none';
+      }).catch(err => {
+        console.warn('TTS 音频播放受浏览器安全限制:', err);
+        const tip = document.getElementById('audioUnlockTip');
+        if (tip) tip.style.display = 'flex';
+      });
+
+      const onTtsFinished = () => {
+        if (audioPlayer && !audioPlayer.paused) {
+          audioPlayer.volume = 0.85;
+        }
+        isPlayingTts = false;
+        processTtsQueue();
+      };
+
+      ttsAudio.onended = onTtsFinished;
+      ttsAudio.onerror = onTtsFinished;
+    }
 
     // 初始化 Live2D Cubism 4 模型
     async function initLive2D() {
@@ -1850,61 +1927,111 @@
     function handleLiveEvent(data) {
       if (!data) return;
 
-      // 弹幕事件
-      if (data.type === 'danmu') {
-        addDanmu(data.user, data.text);
+      // 1. AI 语音回复与自动播报 (优先处理语音播报与口播)
+      if (data.type === 'reply' || data.type === 'ai_reply') {
+        showSpeech('大肥鱼', data.text);
+        if (data.audio_url) {
+          playTtsAudio(data.audio_url);
+        }
+      }
+      // 2. 音乐播放控制 (点歌排队与切歌)
+      else if (data.type === 'music_play') {
+        if (data.song && data.song.url) {
+          const songItem = {
+            title: data.song.name || '热门好歌',
+            url: data.song.url,
+            user: data.username || '热心观众',
+            source: data.is_local ? 'local' : 'muse'
+          };
+          if (!isPlayingSong) {
+            songQueue.push(songItem);
+            playNextSong();
+          } else {
+            songQueue.push(songItem);
+            updateQueueUI();
+            showSpeech('大肥鱼', `收到【${songItem.user}】点播的《${songItem.title}》！已加入排队第 ${songQueue.length} 位！`);
+          }
+        }
+      }
+      else if (data.type === 'music_skip') {
+        playNextSong();
+      }
+      // 3. 实时弹幕事件
+      else if (data.type === 'danmu' || data.type === 'chat') {
+        const user = data.username || data.user || '热心水友';
+        const text = data.content || data.text || '';
+        addDanmu(user, text);
 
-        // 点歌指令匹配
-        if (data.text.startsWith('点歌') || data.text.startsWith('我想听')) {
-          const songName = data.text.replace(/^(点歌|我想听)\s*/, '').trim();
-          if (songName) requestSong(songName, data.user);
-        } else if (data.text === '切歌') {
+        // 点歌/跳舞/猜歌指令匹配
+        if (text.startsWith('点歌') || text.startsWith('我想听')) {
+          const songName = text.replace(/^(点歌|我想听)\s*/, '').trim();
+          if (songName) requestSong(songName, user);
+        } else if (text === '切歌' || text === '下一首') {
           playNextSong();
-        } else if (data.text === '投喂') {
+        } else if (text === '投喂' || text.includes('小鱼干')) {
           feedFish(5);
-          showEventToast('🐟', `${data.user} 投喂小鱼干，体重 +5斤！`);
-        } else if (data.text === '猜歌') {
+          showEventToast('🐟', `${user} 投喂小鱼干，体重 +5斤！`);
+        } else if (text === '猜歌') {
           startGuessSong();
-        } else if (data.text.includes('跳舞') || data.text.includes('跳个舞') || data.text.includes('极乐净土')) {
+        } else if (text.includes('跳舞') || text.includes('跳个舞') || text.includes('极乐净土')) {
           startDance(25);
         }
 
         // 猜歌核对
-        if (currentGuessSong && data.text.includes(currentGuessSong.title)) {
+        if (currentGuessSong && text.includes(currentGuessSong.title)) {
           clearInterval(guessTimer);
           document.getElementById('guessSongBanner').style.display = 'none';
-          showEventToast('👑', `恭喜 ${data.user} 率先猜中《${currentGuessSong.title}》！加冕状元！`);
-          showSpeech('大肥鱼', `太强啦！恭喜【${data.user}】神速猜对《${currentGuessSong.title}》！荣获本场猜歌状元！`);
+          showEventToast('👑', `恭喜 ${user} 率先猜中《${currentGuessSong.title}》！加冕状元！`);
+          showSpeech('大肥鱼', `太强啦！恭喜【${user}】神速猜对《${currentGuessSong.title}》！荣获本场猜歌状元！`);
           currentGuessSong = null;
         }
       }
-      // AI 回复事件
-      else if (data.type === 'ai_reply') {
-        showSpeech('大肥鱼', data.text);
-        if (data.audio_url) {
-          const snd = new Audio(data.audio_url);
-          snd.play().catch(() => {});
+      // 4. 观众进房事件
+      else if (data.type === 'join' || (data.type === 'viewer_event' && data.event === 'join')) {
+        const user = data.username || data.user || '新朋友';
+        addDanmu(user, '进入了直播间', 'join');
+        showEventToast('👋', `欢迎 ${user} 莅临大肥鱼直播间！`);
+      }
+      // 5. 点赞事件
+      else if (data.type === 'like' || data.type === 'like_burst') {
+        const user = data.username || data.user || '热心水友';
+        feedFish(1);
+        showEventToast('💖', `${user} 为大肥鱼点赞！`);
+      }
+      // 6. 送礼事件
+      else if (data.type === 'gift') {
+        const user = data.username || data.user || '热心老板';
+        const count = data.count || 1;
+        feedFish(50 * count);
+        startDance(20, '老板打赏专属庆典热舞');
+        addDanmu(user, `送出 ${data.gift_name || data.content || '小鱼干'} x${count}`, 'gift');
+        showEventToast('🎁', `感谢 ${user} 送出的豪礼！`);
+        document.getElementById('throneUser').innerText = user;
+        document.getElementById('throneScore').innerText = `贡献 ${count * 10} 鱼干`;
+      }
+      // 7. 进化体重更新
+      else if (data.type === 'evolution_update' && data.state) {
+        if (typeof updateEvolutionUI === 'function') {
+          updateEvolutionUI(data.state);
         }
       }
-      // 进房事件
-      else if (data.type === 'join') {
-        addDanmu(data.user, '进入了直播间', 'join');
-        showEventToast('👋', `欢迎 ${data.user} 莅临大肥鱼直播间！`);
-      }
-      // 点赞事件
-      else if (data.type === 'like') {
-        feedFish(1);
-        showEventToast('💖', `${data.user} 为大肥鱼点赞！`);
-      }
-      // 送礼事件
-      else if (data.type === 'gift') {
-        feedFish(50);
-        startDance(20, '老板打赏专属庆典热舞');
-        addDanmu(data.user, `送出 ${data.gift_name} x${data.count || 1}`, 'gift');
-        showEventToast('🎁', `感谢 ${data.user} 送出的豪礼！`);
-        // 榜一更新
-        document.getElementById('throneUser').innerText = data.user;
-        document.getElementById('throneScore').innerText = `贡献 ${data.count * 10} 鱼干`;
+      // 8. 猜歌开始
+      else if (data.type === 'guess_song_start') {
+        const banner = document.getElementById('guessSongBanner');
+        const timerText = document.getElementById('guessTimerText');
+        const hintText = document.getElementById('guessHintText');
+        const progressInner = document.getElementById('guessProgressInner');
+        if (banner) {
+          banner.style.display = 'block';
+          timerText.innerText = '⏳ 20s';
+          hintText.innerText = `提示：${data.hint || '热门金曲'}`;
+          currentGuessSong = { title: data.song_name, url: data.audio_url };
+          if (data.audio_url) {
+            const audioPlayer = document.getElementById('audioPlayer');
+            audioPlayer.src = data.audio_url;
+            audioPlayer.play().catch(() => {});
+          }
+        }
       }
     }
 
@@ -1998,7 +2125,7 @@
       showSpeech('大肥鱼女孩', `音乐响起来！老铁们掌声在哪里？极乐净土安排！公屏荧光棒挥起来！`);
 
       // 播放动感热舞伴奏 (若有本地/在线热舞音频)
-      const danceAudioUrl = "https://music.163.com/song/media/outer/url?id=426881487.mp3"; // 经典极乐净土原曲
+      const danceAudioUrl = "/local_music/%E6%9E%81%E4%B9%90%E5%87%80%E5%9C%9F.mp3"; // 本地极乐净土高保真音源
       audioPlayer.src = danceAudioUrl;
       audioPlayer.play().catch(() => {
         console.log("需要用户点击屏幕触发音频播放");
