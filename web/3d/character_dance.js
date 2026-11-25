@@ -120,10 +120,10 @@ class AnimeVTuberStage {
     // 1. Scene
     this.scene = new THREE.Scene();
 
-    // 2. Camera: 黄金全身机位与镜头视角，从头顶呆毛到脚尖鞋履全景尽收眼底
+    // 2. Camera: 黄金全身机位与镜头视角，从头顶呆毛到脚尖鞋履全景尽收眼底（预留热舞抬手空间）
     this.camera = new THREE.PerspectiveCamera(28, width / height, 0.1, 100);
-    this.camera.position.set(0, 0.35, 4.35);
-    this.camera.lookAt(0, 0.32, 0);
+    this.camera.position.set(0, 0.42, 4.85);
+    this.camera.lookAt(0, 0.36, 0);
 
     // 3. Renderer with transparent background
     this.renderer = new THREE.WebGLRenderer({
