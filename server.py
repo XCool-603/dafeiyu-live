@@ -8,7 +8,12 @@ import asyncio
 import time
 import traceback
 import urllib.parse
+import mimetypes
 from pathlib import Path
+
+mimetypes.init()
+mimetypes.add_type("image/webp", ".webp")
+mimetypes.add_type("model/gltf-binary", ".glb")
 
 # 兼容 Windows GBK 控制台，防止 emoji 报错
 if sys.platform.startswith('win'):

@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>大肥鱼直播间</title>
 
-  <link rel="preload" as="image" href="/bg_aquarium_hd.webp" />
-  <link rel="preload" as="image" href="/dafeiyu_cute_fish.webp" />
-  <link rel="preload" as="image" href="/dafeiyu_girl_3d_transparent.webp" />
+  <link rel="preload" as="image" href="/bg_aquarium_hd.webp?v=20261125" />
+  <link rel="preload" as="image" href="/dafeiyu_cute_fish.png" />
+  <link rel="preload" as="image" href="/dafeiyu_girl_3d_transparent.png" />
 
   <script type="importmap">
     {
@@ -17,7 +17,7 @@
       }
     }
   </script>
-  <script type="module" src="/3d/character_dance.js"></script>
+  <script type="module" src="/3d/character_dance.js?v=20261125"></script>
 
   <style>
     :root {
@@ -983,14 +983,14 @@
   </style>
 </head>
 <body class="mode-combo">
-  <img class="stage-bg" id="stageBg" src="/bg_aquarium_hd.webp" alt="" />
+  <img class="stage-bg" id="stageBg" src="/bg_aquarium_hd.webp?v=20261125" alt="" onerror="this.src='/bg_aquarium_hd.jpg?v=20261125'" />
   <div class="cinematic-vignette"></div>
   <div class="stage-party-lights" id="stagePartyLights"></div>
 
   <!-- 1. 左上角：主播卡片 & 榜一 -->
   <div class="hud-top-left">
     <div class="panel streamer-pill">
-      <img class="streamer-avatar" src="/dafeiyu_cute_fish.webp" alt="大肥鱼" onerror="this.src='/dafeiyu_cute_fish.png'" />
+      <img class="streamer-avatar" src="/dafeiyu_cute_fish.png" alt="大肥鱼" />
       <div class="streamer-meta">
         <div class="streamer-name-row">
           <span>大肥鱼</span>
@@ -1059,13 +1059,13 @@
   <div class="stage-viewport" id="stageViewport">
     <div class="avatar-parallax-wrapper" id="avatarParallax">
       <div class="anime-avatar-frame" id="avatarFrame" title="点击互动">
-        <img id="animeImage" src="/dafeiyu_cute_fish.webp" alt="大肥鱼" onerror="this.src='/dafeiyu_cute_fish.png'" />
+        <img id="animeImage" src="/dafeiyu_cute_fish.png" alt="大肥鱼" />
       </div>
     </div>
 
     <div class="girl-vtuber-frame" id="girlFrame">
       <canvas id="threeStageCanvas"></canvas>
-      <img id="girlImage" src="/dafeiyu_girl_3d_transparent.webp" alt="大肥鱼舞娘" style="display: none;" onerror="this.src='/dafeiyu_girl_3d_transparent.png'" />
+      <img id="girlImage" src="/dafeiyu_girl_3d_transparent.png" alt="大肥鱼舞娘" style="display: none;" />
     </div>
   </div>
 
