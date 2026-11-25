@@ -109,31 +109,75 @@ class AnimeVTuberStage {
     this.isDancing = false;
     this.mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
     this.partyLights = [];
+    this.bgTexture = null;
+    this.bgMode = 'aquarium';
+    this.layoutMode = 'combo';
 
     this.init();
   }
 
+  updateBgCover() {
+    if (!this.bgTexture || !this.bgTexture.image) return;
+    const w = this.canvas.clientWidth || window.innerWidth;
+    const h = this.canvas.clientHeight || window.innerHeight;
+    const imgAspect = this.bgTexture.image.width / this.bgTexture.image.height;
+    const viewAspect = w / h;
+    if (viewAspect > imgAspect) {
+      const r = imgAspect / viewAspect;
+      this.bgTexture.repeat.set(1, r);
+      this.bgTexture.offset.set(0, (1 - r) / 2);
+    } else {
+      const r = viewAspect / imgAspect;
+      this.bgTexture.repeat.set(r, 1);
+      this.bgTexture.offset.set((1 - r) / 2, 0);
+    }
+    this.bgTexture.needsUpdate = true;
+  }
+
+  setBackgroundMode(mode) {
+    this.bgMode = mode;
+  }
+
+  setLayoutMode(mode) {
+    this.layoutMode = mode;
+  }
+
+  updateResponsiveFraming() {
+    const w = this.canvas.clientWidth || 560;
+    const h = this.canvas.clientHeight || 760;
+    if (this.camera) {
+      this.camera.aspect = w / h;
+      this.camera.position.set(0, 0.42, 4.85);
+      this.camera.lookAt(0, 0.36, 0);
+      this.camera.updateProjectionMatrix();
+    }
+    if (this.model) {
+      this.model.position.x = 0;
+    }
+  }
+
   init() {
-    const width = this.canvas.clientWidth || 600;
-    const height = this.canvas.clientHeight || 750;
+    const width = this.canvas.clientWidth || 560;
+    const height = this.canvas.clientHeight || 760;
 
     // 1. Scene
     this.scene = new THREE.Scene();
 
-    // 2. Camera: 黄金全身机位与镜头视角，从头顶呆毛到脚尖鞋履全景尽收眼底（预留热舞抬手空间）
+    // 2. Camera: 黄金全身机位与镜头视角
     this.camera = new THREE.PerspectiveCamera(28, width / height, 0.1, 100);
-    this.camera.position.set(0, 0.42, 4.85);
-    this.camera.lookAt(0, 0.36, 0);
+    this.updateResponsiveFraming();
 
-    // 3. Renderer with transparent background
+    // 3. Renderer with transparent background (antialias: false + pixelRatio 1 avoids 1080p GPU tile glitches)
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
       alpha: true,
-      antialias: true,
-      powerPreference: 'high-performance'
+      antialias: false,
+      preserveDrawingBuffer: true,
+      powerPreference: 'default'
     });
+    this.renderer.setClearColor(0x000000, 0);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     this.renderer.setSize(width, height, false);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.18;
@@ -189,8 +233,8 @@ class AnimeVTuberStage {
     const width = this.canvas.clientWidth;
     const height = this.canvas.clientHeight;
     if (width === 0 || height === 0) return;
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
+    this.updateResponsiveFraming();
+    this.updateBgCover();
     this.renderer.setSize(width, height, false);
   }
 
@@ -202,16 +246,12 @@ class AnimeVTuberStage {
       }
     });
 
-    // 自然可爱的少女站姿 (手臂自然下垂至身体两侧，避免生硬 T-Pose)
+    // 自然可爱的少女站姿 (仅沿 Z 轴轻柔下垂，不扭转 X/Y 轴以免袖口顶点拉扯变形)
     if (this.leftUpperArm) {
-      this.leftUpperArm.rotation.z = -1.22;
-      this.leftUpperArm.rotation.x = 0.18;
-      this.leftUpperArm.rotation.y = 0.08;
+      this.leftUpperArm.rotation.set(0, 0, -1.05);
     }
     if (this.rightUpperArm) {
-      this.rightUpperArm.rotation.z = 1.22;
-      this.rightUpperArm.rotation.x = 0.18;
-      this.rightUpperArm.rotation.y = -0.08;
+      this.rightUpperArm.rotation.set(0, 0, 1.05);
     }
   }
 
@@ -266,6 +306,7 @@ class AnimeVTuberStage {
       });
 
       this.scene.add(this.model);
+      this.updateResponsiveFraming();
 
       // 初始化骨骼姿态
       this.resetToIdlePose();
@@ -337,10 +378,10 @@ class AnimeVTuberStage {
 
       // 手臂微幅随呼吸摇曳
       if (this.leftUpperArm) {
-        this.leftUpperArm.rotation.z = -1.22 + Math.sin(elapsedTime * 2.2) * 0.025;
+        this.leftUpperArm.rotation.z = -1.05 + Math.sin(elapsedTime * 2.2) * 0.02;
       }
       if (this.rightUpperArm) {
-        this.rightUpperArm.rotation.z = 1.22 - Math.sin(elapsedTime * 2.2) * 0.025;
+        this.rightUpperArm.rotation.z = 1.05 - Math.sin(elapsedTime * 2.2) * 0.02;
       }
 
       // 平滑插值鼠标跟随
@@ -386,5 +427,17 @@ window.play3DCharacterDance = function() {
 window.stop3DCharacterDance = function() {
   if (window.__vtuberStage) {
     window.__vtuberStage.stopDance();
+  }
+};
+
+window.set3DBackgroundMode = function(mode) {
+  if (window.__vtuberStage) {
+    window.__vtuberStage.setBackgroundMode(mode);
+  }
+};
+
+window.set3DLayoutMode = function(mode) {
+  if (window.__vtuberStage) {
+    window.__vtuberStage.setLayoutMode(mode);
   }
 };

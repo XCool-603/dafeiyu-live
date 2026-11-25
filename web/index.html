@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>大肥鱼直播间</title>
 
-  <link rel="preload" as="image" href="/bg_aquarium.jpg" />
+  <link rel="preload" as="image" href="/bg_aquarium_hd.webp" />
   <link rel="preload" as="image" href="/dafeiyu_cute_fish.webp" />
   <link rel="preload" as="image" href="/dafeiyu_girl_3d_transparent.webp" />
 
@@ -46,15 +46,25 @@
       height: 100vh;
       overflow: hidden;
       font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #070b12 url('/bg_aquarium.jpg') no-repeat center center / cover;
+      background: #070b12;
       color: var(--text-primary);
       position: relative;
-      transition: background-color 0.25s ease;
+    }
+
+    .stage-bg {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+      pointer-events: none;
     }
 
     body.bg-green {
       background: #00b140 !important;
     }
+    body.bg-green .stage-bg,
     body.bg-green .cinematic-vignette,
     body.bg-green .stage-party-lights {
       display: none !important;
@@ -63,6 +73,7 @@
     body.bg-transparent {
       background: transparent !important;
     }
+    body.bg-transparent .stage-bg,
     body.bg-transparent .cinematic-vignette {
       display: none !important;
     }
@@ -91,12 +102,10 @@
     }
 
     .panel {
-      background: var(--bg-surface);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      background: rgba(11, 16, 24, 0.84);
       border: 1px solid var(--border-hairline);
       border-radius: var(--radius-md);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.28);
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.32);
     }
 
     .icon {
@@ -447,10 +456,8 @@
     }
 
     .danmu-item {
-      background: rgba(11, 16, 24, 0.56);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(11, 16, 24, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       padding: 6px 10px;
       border-radius: 8px;
       font-size: 13px;
@@ -876,22 +883,107 @@
       color: var(--text-primary);
     }
 
+    .dock-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .dock-form {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
     /* 响应式小屏适配（手机端局域网浏览） */
     @media (max-width: 900px) {
-      .hud-top-right { width: 200px; }
-      .danmu-waterfall { width: 230px; }
-      .operator-dock {
-        flex-wrap: wrap;
-        justify-content: center;
-        bottom: 10px;
+      .hud-top-left {
+        top: 10px;
+        left: 10px;
+        max-width: calc(100vw - 20px);
       }
-      .dock-input { width: 150px; }
-      .subtitle-bar { max-width: 90vw; bottom: 106px; }
-      .danmu-waterfall { bottom: 154px; }
+      .rank-pill { display: none; }
+      .hud-top-right {
+        top: 72px;
+        left: 10px;
+        right: 10px;
+        width: auto;
+      }
+      .music-card {
+        padding: 8px 12px;
+        gap: 6px;
+      }
+      .queue-divider, .queue-head, .queue-list { display: none; }
+      .quick-songs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+      }
+      .avatar-parallax-wrapper {
+        left: 24%;
+        top: 52%;
+      }
+      .anime-avatar-frame {
+        width: 150px;
+        height: 150px;
+      }
+      .girl-vtuber-frame {
+        left: 62%;
+        top: 52%;
+        width: 260px;
+        height: 54vh;
+      }
+      .live-clock { display: none; }
+      .subtitle-bar {
+        left: 10px;
+        right: 10px;
+        transform: none;
+        width: auto;
+        min-width: 0;
+        max-width: none;
+        bottom: 102px;
+        padding: 8px 12px;
+      }
+      .danmu-waterfall {
+        left: 10px;
+        width: calc(100vw - 20px);
+        max-height: 110px;
+        bottom: 158px;
+      }
+      .operator-dock {
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        transform: none;
+        width: auto;
+        max-width: none;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+        padding: 8px;
+      }
+      .dock-sep { display: none; }
+      .dock-actions {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 2px;
+      }
+      .dock-actions::-webkit-scrollbar { display: none; }
+      .dock-form {
+        width: 100%;
+      }
+      .dock-input {
+        flex: 1;
+        width: auto;
+        min-width: 0;
+      }
+      body.clean-mode .subtitle-bar { bottom: 24px; }
+      body.clean-mode .danmu-waterfall { bottom: 82px; }
     }
   </style>
 </head>
 <body class="mode-combo">
+  <img class="stage-bg" id="stageBg" src="/bg_aquarium_hd.webp" alt="" />
   <div class="cinematic-vignette"></div>
   <div class="stage-party-lights" id="stagePartyLights"></div>
 
@@ -1015,62 +1107,66 @@
 
   <!-- 8. 底部控台（推流时可按 H 或点纯净推流一键隐藏） -->
   <div class="panel operator-dock" id="bottomDock">
-    <button class="dock-btn btn-audio-alert" id="audioUnlockTip" onclick="unlockAudio()" title="点击开启声音与伴奏">
-      <svg class="icon" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-      <span>激活声音</span>
-    </button>
+    <div class="dock-actions">
+      <button class="dock-btn btn-audio-alert" id="audioUnlockTip" onclick="unlockAudio()" title="点击开启声音与伴奏">
+        <svg class="icon" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+        <span>激活声音</span>
+      </button>
 
-    <button class="dock-btn" id="switchDisplayModeBtn" title="切换画面布局">
-      <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="12" y1="3" x2="12" y2="21"></line></svg>
-      <span>双模同台</span>
-    </button>
+      <button class="dock-btn" id="switchDisplayModeBtn" title="切换画面布局">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="12" y1="3" x2="12" y2="21"></line></svg>
+        <span>双模同台</span>
+      </button>
 
-    <button class="dock-btn active" id="switchAvatarEngineBtn" title="切换 3D 舞娘或原画形象">
-      <svg class="icon" viewBox="0 0 24 24"><path d="M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7z"></path></svg>
-      <span>3D舞娘</span>
-    </button>
+      <button class="dock-btn active" id="switchAvatarEngineBtn" title="切换 3D 舞娘或原画形象">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 2l3 7 7 3-7 3-3 7-3-7-7-3 7-3 3-7z"></path></svg>
+        <span>3D舞娘</span>
+      </button>
 
-    <button class="dock-btn" id="switchBgBtn" title="切换实景/绿幕/透明背景">
-      <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-      <span>背景: 实景</span>
-    </button>
+      <button class="dock-btn" id="switchBgBtn" title="切换实景/绿幕/透明背景">
+        <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+        <span>背景: 实景</span>
+      </button>
+
+      <div class="dock-sep"></div>
+
+      <button class="dock-btn btn-dance" id="danceBtn" title="开启极乐净土热舞">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+        <span>热舞</span>
+      </button>
+
+      <button class="dock-btn" id="triggerGuessBtn" title="发起猜歌">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        <span>猜歌</span>
+      </button>
+
+      <button class="dock-btn" id="feedFishBtn" title="投喂增加体重">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+        <span>投喂</span>
+      </button>
+
+      <button class="dock-btn" id="skipSongBtn" title="切到下一首">
+        <svg class="icon" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
+        <span>切歌</span>
+      </button>
+
+      <button class="dock-btn" id="broadcastRuleBtn" title="语音播报欢迎语">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>
+        <span>播报</span>
+      </button>
+
+      <button class="dock-btn" id="hideUiBtn" title="隐藏底部控台 (按 H 键恢复)">
+        <svg class="icon" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+        <span>纯净推流</span>
+      </button>
+    </div>
 
     <div class="dock-sep"></div>
 
-    <button class="dock-btn btn-dance" id="danceBtn" title="开启极乐净土热舞">
-      <svg class="icon" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
-      <span>热舞</span>
-    </button>
-
-    <button class="dock-btn" id="triggerGuessBtn" title="发起猜歌">
-      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-      <span>猜歌</span>
-    </button>
-
-    <button class="dock-btn" id="feedFishBtn" title="投喂增加体重">
-      <svg class="icon" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-      <span>投喂</span>
-    </button>
-
-    <button class="dock-btn" id="skipSongBtn" title="切到下一首">
-      <svg class="icon" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></svg>
-      <span>切歌</span>
-    </button>
-
-    <button class="dock-btn" id="broadcastRuleBtn" title="语音播报欢迎语">
-      <svg class="icon" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>
-      <span>播报</span>
-    </button>
-
-    <button class="dock-btn" id="hideUiBtn" title="隐藏底部控台 (按 H 键恢复)">
-      <svg class="icon" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-      <span>纯净推流</span>
-    </button>
-
-    <div class="dock-sep"></div>
-
-    <input type="text" class="dock-input" id="msgInput" placeholder="发弹幕或输入「点歌 歌名」" />
-    <button class="dock-send" id="sendBtn">发送</button>
+    <div class="dock-form">
+      <input type="text" class="dock-input" id="msgInput" placeholder="发弹幕或输入「点歌 歌名」" />
+      <button class="dock-send" id="sendBtn">发送</button>
+    </div>
   </div>
 
   <audio id="audioPlayer"></audio>
@@ -1179,6 +1275,12 @@
 
     // 布局模式切换
     const switchDisplayModeBtn = document.getElementById('switchDisplayModeBtn');
+    function syncStageVisibility() {
+      const using3D = (avatarEngineMode === '3d') && !document.body.classList.contains('mode-fish');
+      if (using3D) document.body.classList.add('using-3d-stage');
+      else document.body.classList.remove('using-3d-stage');
+    }
+
     function applyDisplayMode(mode) {
       document.body.classList.remove('mode-combo', 'mode-fish', 'mode-girl');
       document.body.classList.add('mode-' + mode);
@@ -1188,6 +1290,8 @@
         else if (mode === 'girl') label.innerText = '舞娘独秀';
         else label.innerText = '萌鱼独秀';
       }
+      if (window.set3DLayoutMode) window.set3DLayoutMode(mode);
+      syncStageVisibility();
     }
     if (switchDisplayModeBtn) {
       switchDisplayModeBtn.addEventListener('click', () => {
@@ -1207,6 +1311,7 @@
         else if (mode === 'green') label.innerText = '背景: 绿幕';
         else label.innerText = '背景: 透明';
       }
+      if (window.set3DBackgroundMode) window.set3DBackgroundMode(mode);
     }
     if (switchBgBtn) {
       switchBgBtn.addEventListener('click', () => {
@@ -1712,6 +1817,7 @@
         if (canvas3D) canvas3D.style.display = 'none';
         if (girlImg) girlImg.style.display = 'block';
       }
+      syncStageVisibility();
     }
 
     if (switchAvatarBtn) {
